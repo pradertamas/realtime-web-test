@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sender · Real-Time Browser Test</title><link rel="stylesheet" href="style.css"><script defer src="common.js"></script><script defer src="sender.js"></script></head><body>
+<nav><a href="index.html">Home</a><a href="receiver.html">Receiver</a></nav><h1>Sender</h1>
+<section class="panel"><div class="controls"><label>Session ID <input id="session" maxlength="64" autocomplete="off" spellcheck="false"></label><button id="connect">CONNECT</button><button id="disconnect">DISCONNECT</button></div><p>Active session: <strong id="activeSession">—</strong></p><p id="status" class="status" role="status">DISCONNECTED</p><p id="notice" role="status"></p><div class="controls"><button id="start">START STREAM</button><button id="stop">STOP STREAM</button></div><dl id="metrics" class="metrics"></dl></section>
+<section class="panel"><h2>Diagnostic log</h2><div id="log" class="log"></div></section></body></html>
