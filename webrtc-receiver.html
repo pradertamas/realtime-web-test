@@ -1,13 +1,20 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoC 4A WebRTC receiver</title><link rel="stylesheet" href="style.css"><script defer src="webrtc-receiver.js"></script></head>
-<body><nav><a href="index.html">Home</a></nav><h1>PoC 4A WebRTC receiver</h1>
-<section class="panel"><label>Session ID <input id="session" value="poc4a_123456" maxlength="64" autocomplete="off" spellcheck="false"></label>
-<button id="connect">Connect</button> <button id="disconnect" disabled>Disconnect</button><p id="status" role="status">Disconnected</p>
-<p>Connect here first, then start a fresh Android share. STUN only, no TURN. Relay must support bidirectional signaling. Reconnect both endpoints with fresh Android consent after stopping.</p></section>
-<section class="panel"><video id="video" autoplay playsinline muted controls style="display:block;max-width:100%;width:auto;max-height:75vh;object-fit:contain;background:#000"></video><button id="play">Play video</button></section>
+﻿<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="receiver-ui.css"><script defer src="pairing.js"></script><script defer src="webrtc-receiver.js"></script></head>
+<body><main class="receiver">
+<header class="receiver-header"><h1>Screen Receiver</h1><p>Share your Android screen with this browser.</p></header>
+<section class="panel pairing-panel" aria-label="Pair your phone">
+<label for="session">Pairing code</label><input id="session" maxlength="32" placeholder="______" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="pairingHelp">
+<div class="pairing-actions"><button id="connect">Connect</button><button id="disconnect" disabled>Disconnect</button></div>
+<p id="status" class="status" role="status" aria-live="polite">Waiting</p>
+<p id="pairingHelp">Tap Start share on your phone, allow screen sharing, then enter its 6-character code here. Keep the code private.</p>
+</section>
+<section class="panel receiver-video" aria-label="Shared screen"><video id="video" autoplay playsinline muted controls aria-label="Live Android screen"></video><button id="play">Play video</button></section>
+<details id="diagnostics"><summary>Advanced diagnostics</summary>
+<p class="note">Direct WebRTC connection, STUN discovery, no TURN fallback. The video never travels over the signaling WebSocket.</p>
 <div class="grid"><section class="panel"><h2>Connection</h2><dl id="connection" class="metrics"></dl></section>
 <section class="panel"><h2>Video</h2><dl id="videoMetrics" class="metrics"></dl></section>
 <section class="panel"><h2>Bandwidth</h2><dl id="bandwidth" class="metrics"></dl></section>
-<section class="panel"><h2>Estimated WebRTC frame timing</h2><dl id="latency" class="metrics"></dl><p>Best effort browser timestamps. Capture time uses an estimated remote clock mapping. These values are not laboratory glass-to-glass latency; expected display is a prediction. Hidden tabs can affect measurements. Missing timestamps: N/A.</p></section></div>
-<section class="panel"><h2>Last session summary</h2><textarea id="summary" readonly rows="18" spellcheck="false">No completed session.</textarea></section>
-</body></html>
+<section class="panel"><h2>Estimated WebRTC frame timing</h2><dl id="latency" class="metrics"></dl><p>Best effort browser timestamps; not laboratory glass-to-glass latency. Missing timestamps: N/A.</p></section></div>
+<section class="panel"><h2>Last session summary</h2><textarea id="summary" readonly rows="16" spellcheck="false">No completed session.</textarea></section>
+<section class="panel"><h2>Previous completed session</h2><textarea id="previousSummary" readonly rows="16" spellcheck="false">No previous session.</textarea></section>
+</details></main></body></html>

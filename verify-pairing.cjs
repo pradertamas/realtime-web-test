@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {Pairing:p}=require('./pairing.js');
+assert.equal(p.ALPHABET.length,32);
+for(const [input,expected] of [['7K4M2Q','7K4M2Q'],['7k4m2q','7K4M2Q'],[' \n7k4m2q\t ','7K4M2Q']]) assert.equal(p.normalize(input),expected);
+for(const input of ['',null,123,'7K4M2','7K4M2QQ','7K 4MQ','7K4M2O','7K4M20','7K4M2I','7K4M21','７K4M2Q','7K4M2ſ','ABC<script>']) assert.equal(p.normalize(input),null,String(input));
+assert.deepEqual(p.query('?session=7K4M2Q'),{code:'7K4M2Q',error:null});
+assert.deepEqual(p.query('?session=%207k4m2q%20'),{code:'7K4M2Q',error:null});
+assert.deepEqual(p.query(''),{code:null,error:null});
+assert.deepEqual(p.query('?other=x'),{code:null,error:null});
+for(const query of ['?session=','?session=12345','?session=7K4M2Q&session=AAAAAA','?session=%3Cscript%3E','?session=%E0%A4%A']) assert.ok(p.query(query).error,query);
+console.log('PASS pairing: allowed 6-character code, lowercase, surrounding whitespace, forbidden/non-ASCII characters, short/long inputs and safe query parsing including duplicates/malformed encoding.');

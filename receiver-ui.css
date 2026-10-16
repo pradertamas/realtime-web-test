@@ -1,0 +1,8 @@
+.receiver{max-width:1100px;margin:auto}.receiver-header{text-align:center;padding:16px 0}.receiver-header p{color:#b9cbe0}
+.pairing-panel{max-width:580px;margin:0 auto 20px;text-align:center}.pairing-panel label{display:block;text-align:left;font-weight:600}
+#session{display:block;width:100%;margin:12px 0 16px;text-align:center;letter-spacing:.22em;text-transform:uppercase;font:700 clamp(1.8rem,6vw,2.5rem) ui-monospace,monospace;padding:18px 12px;min-height:76px}
+.pairing-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}#connect{background:#23624b;border-color:#7df2b0;font-weight:650;min-width:140px}
+.receiver-video{display:flex;flex-direction:column;align-items:center;gap:12px}#video{display:block;width:auto;max-width:100%;max-height:72vh;min-height:180px;object-fit:contain;background:#000;border-radius:8px}
+.receiver details>summary{cursor:pointer;padding:18px;font-weight:600;min-height:56px}.receiver details[open]>summary{margin-bottom:14px}.receiver details .panel{margin:0 0 16px}
+.receiver textarea{min-height:280px;font-size:14px}.receiver .status{min-height:48px;display:grid;place-content:center}
+@media(max-width:440px){.receiver-video{padding:10px}.receiver details>summary{padding:14px}}

@@ -1,85 +1,63 @@
-# Real-Time Browser Test
+﻿# Screen Receiver - P2P pairing release
 
-A framework-free static browser compatibility test for simultaneous public WSS delivery, structured data, DOM updates, Canvas 2D, WebGL and runtime callbacks. This is a diagnostic application with raw measurements, not an automatic certification tool.
+The normal receiver is webrtc-receiver.html. Tap Start share on Android, allow
+screen capture, enter the phone's six-character code in the browser and Connect.
+The QR opens the receiver with ?session=<CODE>, prefills the code and waits for
+Connect. Input is trimmed, uppercased and validated against
+23456789ABCDEFGHJKLMNPQRSTUVWXYZ. No long session ID, account or receiver app.
 
-## Architecture and files
+The active code uses native RTCPeerConnection, STUN discovery and policy all.
+There are no TURN servers, Cloudflare requests, credential endpoints or tokens.
+The WSS service at wss://realtime-relay-k28l.onrender.com/ws carries only
+ready/offer/answer/trickle ICE/bye. Video travels directly through WebRTC to a
+normal autoplay/playsinline video element. Failed direct connections show:
+Direct connection could not be established.
 
-- `index.html`: entry page linking the two roles.
-- `sender.html`, `sender.js`: synthetic JSON producer at approximately 10 messages/second.
-- `receiver.html`, `receiver.js`: live measurements, rendering and manual continuity reports.
-- `common.js`: session validation, relay URL, message validation, bounded sequence tracking and interval measurement.
-- `style.css`: local responsive dark theme with touch-sized controls.
+## Release files
 
-Only native browser APIs are used. There are no packages, build step, external assets, scripts, fonts, cookies, storage, credentials or telemetry. Session IDs are held in page memory only. The public relay is `wss://realtime-relay-k28l.onrender.com/ws`; its health endpoint is <https://realtime-relay-k28l.onrender.com/>. The relay is external to this repository and is not modified here.
+- webrtc-receiver.html: pairing input, video and collapsible diagnostics.
+- webrtc-receiver.js: direct signaling/media, stats, timing and summaries.
+- pairing.js: short-code validation and query parsing; no persistence.
+- receiver-ui.css and style.css: local styles.
+- index.html: entry page.
 
-## GitHub Pages
+Advanced diagnostics retain ICE/peer state, selected candidates, resolution,
+codec, FPS, bitrate, bytes, RTT, dropped frames and best-effort frame timing.
+Timestamp support varies: N/A is valid; this is not laboratory glass-to-glass
+latency. Summaries remain only in page memory. Codes/QR URLs are session secrets;
+referrer policy is no-referrer, but browser history can retain the URL.
 
-Serve the repository root using GitHub Pages. All local links are relative, including when served at <https://pradertamas.github.io/realtime-web-test/>. No compilation is required. A local static HTTP server can also serve these files.
+The older diagnostic sender.html/sender.js, receiver.html/receiver.js and
+common.js remain available via index.html. They send synthetic JSON samples,
+not Android video. They use manual diagnostic IDs; the relay requires 6-64
+ASCII letters/digits/underscore/hyphen even if the older UI accepts shorter IDs.
+The relay is two-way; the old sample receiver simply does not send messages.
 
-## Pairing
+## Run and check
 
-1. Open Sender and Receiver in separate browser contexts.
-2. Enter the same unique temporary session ID on each: 1–64 ASCII letters, digits, underscores or hyphens. Session IDs are case-sensitive and are the access boundary; do not reuse a confidential identifier.
-3. CONNECT both roles, then START STREAM on Sender. Confirm changing values and approximately 10 received messages/s on Receiver.
-4. STOP STREAM pauses transmission. DISCONNECT also stops the sender. Repeated START clicks cannot add timers. A delayed timer sends one sample on its next tick; it does not catch up with bursts. Excessive outgoing buffering stops the stream visibly in the log.
-5. DISCONNECT to edit the session ID. There is no automatic reconnection. Each connection attempt after the first counts as a reconnect attempt, including changes of session.
+Serve the project root locally, for example:
 
-CONNECT is ignored until the previous socket is fully closed. Sender sequence numbers continue across STOP/START and reconnection within the same page; reloading the sender restarts them. A different receiver session clears the displayed sample and sequence history so stale data is not presented as belonging to the new session.
+```text
+npx --yes http-server . -p 8080 -c-1
+```
 
-The relay permits one sender and one receiver per ephemeral session, forwards sender messages unchanged to the receiver, and does not forward receiver messages to the sender. The receiver sends no application messages. The relay may spin down after inactivity, so the first connection may take longer. Retry manually if necessary.
+Open http://localhost:8080/webrtc-receiver.html. The public URL is
+https://pradertamas.github.io/realtime-web-test/webrtc-receiver.html . New assets
+must be manually published before the public QR flow uses them. No deployment
+was performed. A static release must include the listed root assets and exclude
+experiments/; do not publish the historical snapshot receiver as an entry point.
 
-## Manual continuity test
+```text
+node verify.cjs
+node verify-webrtc.cjs
+node verify-pairing.cjs
+node --check pairing.js
+node --check webrtc-receiver.js
+```
 
-1. Establish the connection and confirm live data.
-2. START CONTINUITY TEST on Receiver. This snapshots counters and page state.
-3. Change the runtime/environment condition externally. The page does not detect external modes.
-4. Return and STOP CONTINUITY TEST.
-5. Read the full selectable report. Its text area scrolls and can be resized; use overlapping captures as needed. Clipboard access is not required.
-6. RESET TEST clears interval measurements and results without restarting connections, listeners, rendering or timers. Another START replaces the previous report. STOP results otherwise remain available.
+These cover existing diagnostics, direct signaling/ICE/stats/timing and pairing
+rules/query prefill. Physical stability still requires a device/browser run.
+Full Android and physical test notes: sibling ui-capture-test/PAIRING.md.
 
-Reports include elapsed time, connection states, message and sequence deltas, average receive rate, first/last sequence, reconnect attempts, RAF/Canvas/WebGL frames and average rates, timer ticks/rate, interval-specific receive/RAF/timer maximum gaps, page state and lifecycle event deltas. Interval gaps start at START and include the quiet tail up to STOP, even if no event occurs; pre-test gaps are excluded. Lifetime maximum gaps measure completed callback-to-callback gaps, excluding the initial startup period. Recent rates use local monotonic time over each roughly one-second update window.
-
-The receive rates and receive gaps refer to valid sample messages; total and ignored message counts are shown separately. Recent-window rates count events divided by that window's elapsed time, rather than extrapolating from the last pair of events. Final rates divide interval counter deltas by the full continuity interval, including disconnected or inactive time. A test with no valid samples explicitly reports that transport continuity cannot be inferred; its receive gap is the entire interval without observations. Lifetime receive gaps include disconnected time between samples in the same session; a different session starts a new inter-arrival baseline. Interval receive gaps continue across all connection/session changes within the test. RESET affects only the test, not lifetime counters or recent-window rate baselines. RAF gaps measure callback execution time with the same monotonic clock as START/STOP, rather than the browser's earlier frame timestamp.
-
-## Interpretation and limits
-
-Counter deltas show callback/message activity observed during the interval. They do not by themselves prove that the page remained visibly presented for the entire interval. Receiving messages establishes delivery to JavaScript while callbacks execute; RAF and rendering counts establish callback/render calls, not physical display visibility at every instant. No automatic PASS/FAIL is assigned. No one-way network latency is inferred from different devices' clocks.
-
-Missing sequences count forward jumps larger than one, without assuming the initial sequence is one. Late arrivals do not erase earlier gaps. Duplicates are tracked over the most recent 4096 distinct sequence numbers; older repeated values may be classified as out-of-order. A different session resets sequence history, but cumulative counts remain. Use a fresh page/test when restarting the sender sequence in the same session. Invalid or oversized messages are ignored and counted. Logs contain at most 150 entries.
-
-Canvas and WebGL use one shared RAF loop and the latest data, with small local pulse/color animation between messages. WebGL2 is attempted first, then WebGL1. Standard renderer/vendor/version information is shown without debug extensions. Unavailable and lost contexts are reported; restored contexts rebuild rendering resources. Rendering and timer behavior may be restricted by the runtime. Browser/GPU behavior requires testing in the intended browser.
-
-## Local verification
-
-Run `node --check common.js`, `node --check sender.js`, `node --check receiver.js`, and `node verify.cjs`. The verification harness uses native Node APIs and deterministic browser stubs; it does not replace a real GPU/browser test. `node verify.cjs --remote` additionally attempts an isolated 100-message, approximately 10 Hz relay round trip using a random session, when Node provides a native WebSocket API and network access is available.
-
-## PoC 4A WebRTC receiver
-
-Open `webrtc-receiver.html` through a static HTTP server or HTTPS GitHub Pages.
-For a local desktop test, run `npx --yes http-server . -p 8080 -c-1` here and
-open `http://localhost:8080/webrtc-receiver.html`. Enter the same 6–64-character
-session ID as Android and Connect before starting a fresh Android share.
-
-**Deployment prerequisite:** the public relay originally forwarded sender →
-receiver only. The local `realtime-relay` patch must be manually deployed before
-this receiver can exchange ready/answer/ICE with Android. This work does not
-publish the page or deploy the relay.
-
-The new page uses a normal autoplay/playsinline video element. Media uses
-WebRTC P2P, never WebSocket. Signaling uses the existing session/role URL model,
-with receiver ready, Android offer, browser answer and bidirectional trickle ICE.
-ICE config is isolated at the top of `webrtc-receiver.js`: public Google STUN,
-policy all, no TURN. Stopping requires reconnecting both sides and fresh Android
-capture consent. Existing sample sender/receiver/common.js are unchanged.
-
-Run `node verify.cjs`, `node --check webrtc-receiver.js` and
-`node verify-webrtc.cjs`. The latter checks asynchronous signaling order, early
-ICE, stats/timing fallbacks, bitrate, selected pair, summary retention and cleanup
-with fake APIs; it does not establish a physical P2P PASS.
-
-Stats update about once per second. Byte counters are RTP stats, not a billable
-wire total; averages include session setup. Estimated WebRTC frame timing is
-best effort requestVideoFrameCallback metadata, not laboratory glass-to-glass
-latency. Unsupported stats/timestamps show N/A. A selectable summary remains
-after Disconnect. Follow `ui-capture-test/POC4A.md` in the sibling Android project
-for the audit, protocol, lifecycle and exact >=120-second Samsung/desktop test.
+The historical PoC 4B TURN sources/tests/docs are preserved exclusively under
+experiments/poc4b/. They are not loaded by this receiver or part of the release.
