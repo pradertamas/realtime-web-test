@@ -1,12 +1,17 @@
 ﻿<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="receiver-ui.css"><script defer src="pairing.js"></script><script defer src="webrtc-receiver.js"></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="receiver-ui.css"><script defer src="vendor/qrcode-generator-2.0.4.js"></script><script defer src="vendor/jsqr-1.4.0.js"></script><script defer src="pairing.js"></script><script defer src="qr-tools.js"></script><script defer src="webrtc-receiver.js"></script></head>
 <body><main class="receiver">
 <header class="receiver-header"><h1>Screen Receiver</h1><p>Share your Android screen with this browser.</p></header>
 <section class="panel pairing-panel" aria-label="Pair your phone">
+<button id="create">Create pairing</button>
+<section id="createdPairing" hidden><h2>Pairing code</h2><p id="createdCode"></p><div id="createdQr"></div><p>On your phone, scan this QR or enter the code.</p></section>
+<h2>Join a pairing</h2>
 <label for="session">Pairing code</label><input id="session" maxlength="32" placeholder="______" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="pairingHelp">
 <div class="pairing-actions"><button id="connect">Connect</button><button id="disconnect" disabled>Disconnect</button></div>
+<button id="scan">Scan QR code</button>
 <p id="status" class="status" role="status" aria-live="polite">Waiting</p>
-<p id="pairingHelp">Tap Start share on your phone, allow screen sharing, then enter its 6-character code here. Keep the code private.</p>
+<p id="pairingHelp">Create a pairing here for your phone to join, or join a pairing created on your phone. Keep the code private.</p>
+<section id="scanPanel" hidden><video id="scanVideo" autoplay muted playsinline></video><canvas id="scanCanvas" hidden></canvas><button id="cancelScan">Cancel scan</button></section>
 </section>
 <section class="panel receiver-video" aria-label="Shared screen"><video id="video" autoplay playsinline muted controls aria-label="Live Android screen"></video><button id="play">Play video</button></section>
 <details id="diagnostics"><summary>Advanced diagnostics</summary>

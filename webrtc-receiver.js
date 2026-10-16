@@ -42,6 +42,21 @@ function frameLoop(s) {
 }
 async function signal(s,m) {
   if(active!==s || s.stopping) return;
+  if(m.type==='registration') {
+    clearTimeout(s.registrationTimer);
+    if(m.status==='ok'){
+      s.registered=true;
+      el('session').value=s.session;
+      status(s.intent==='create'?'Waiting for phone...':'Phone connected. Starting stream');
+      if(s.intent==='create'){el('createdPairing').hidden=false;el('createdCode').textContent=s.session;QrTools.render(el('createdQr'),Pairing.receiverUrl(s.session));}
+    }else if(m.status==='conflict' && s.intent==='create' && s.attempts<4){
+      s.attempts++;s.session=Pairing.generate();const previous=s.ws;s.ws=null;previous.close();openSignaling(s);
+    }else await stop(s,m.status==='not-found'?'Pairing code not found or expired.':'Pairing code already in use.');
+    return;
+  }
+  if(['peer-present','offer','ice'].includes(m.type)&&!s.registered)throw Error('Pairing registration has not succeeded.');
+  if(m.type==='peer-present'){status('Phone connected. Starting stream');return;}
+  if(m.type==='peer-left'){await stop(s,'Disconnected');return;}
   if(m.type==='ready') {send(s,{type:'ready'});return;}
   if(m.type==='bye') {await stop(s,'Android stopped');return;}
   if(m.type==='session-config') throw Error('Use the updated direct-connection app.');
@@ -80,36 +95,45 @@ function bindPeer(s) {
     if(pc.connectionState==='failed') stop(s,'Direct connection could not be established.');
   };
 }
-async function connect() {
+async function connect(intent='join') {
+  scanner.stop();el('scanPanel').hidden=true;
   if(active) return;
-  const session=Pairing.normalize(el('session').value);
-  if(!session){status('Enter the 6-character pairing code shown on your phone.');return;}
+  let session;
+  try{session=intent==='create'?Pairing.generate():Pairing.normalize(el('session').value);}catch{status('Secure code generation is unavailable. Enter a pairing code instead.');return;}
+  if(!session){status('Invalid pairing code. Enter the 6-character code shown on your phone.');return;}
   el('session').value=session;
   let s;
   try {
-    s={pc:new RTCPeerConnection(RTC_CONFIG),streaming:false,session,start:performance.now(),last:null,firstMedia:null,latest:{},peak:0,stopping:false,offered:false,pendingIce:[],chain:Promise.resolve(),statsPending:false,
+    s={pc:new RTCPeerConnection(RTC_CONFIG),streaming:false,intent,attempts:1,registered:false,session,start:performance.now(),last:null,firstMedia:null,latest:{},peak:0,stopping:false,offered:false,pendingIce:[],chain:Promise.resolve(),statsPending:false,
       timing:{captureReceive:accumulator(),receiveDisplay:accumulator(),captureDisplay:accumulator()},rtt:accumulator(),timestamps:{}};
     active=s;
     bindPeer(s);
     status('Connecting');
     s.waitingTimer=setTimeout(()=>stop(s,'The phone is not available. Start a new share and try its new code.'),300000);
     el('summary').value='Session running; disconnect to retain summary.';
+    el('createdPairing').hidden=true;el('create').disabled=true;el('scan').disabled=true;
     el('session').disabled=true;el('connect').disabled=true;el('disconnect').disabled=false;
     for(const id of ['connection','videoMetrics','bandwidth','latency']) list(id,{'Status':'Waiting for media'});
-    const ws=new WebSocket(SIGNALING_URL+'?session='+encodeURIComponent(session)+'&role=receiver');s.ws=ws;
-    ws.onopen=()=>{if(active!==s||s.stopping)return;status('Connected. Waiting for phone...');send(s,{type:'ready'});
+    openSignaling(s);
+    s.statsTimer=setInterval(()=>sample(s).catch(()=>{}),1000);
+    frameLoop(s);
+  }catch(error) {if(s)await stop(s,'Direct connection could not be established.');else status('WebRTC is unavailable in this browser.');}
+}
+function openSignaling(s){
+    s.registered=false;
+    clearInterval(s.readyTimer);clearTimeout(s.registrationTimer);
+    const ws=new WebSocket(SIGNALING_URL+'?session='+encodeURIComponent(s.session)+'&role=receiver&intent='+s.intent);s.ws=ws;
+    ws.onopen=()=>{if(active!==s||s.stopping||s.ws!==ws)return;status('Connecting');
+      s.registrationTimer=setTimeout(()=>stop(s,'Pairing service is unavailable. Please try again later.'),15000);send(s,{type:'ready'});
       s.readyTimer=setInterval(()=>{if(!s.offered)send(s,{type:'ready'});},1000);};
     ws.onmessage=e=>{
-      if(active!==s||s.stopping||typeof e.data!=='string')return;
+      if(active!==s||s.stopping||s.ws!==ws||typeof e.data!=='string')return;
       if(new TextEncoder().encode(e.data).length>=65536)return;
       // Serialize SDP and trickle ICE async operations; ICE may arrive before setRemoteDescription completes.
       s.chain=s.chain.then(()=>signal(s,JSON.parse(e.data))).catch(()=>stop(s,'Connection could not be established. Start a new share and try again.'));
     };
-    ws.onerror=()=>{if(active===s&&!s.stopping)stop(s,'Could not connect. Check your code and internet connection.');};
-    ws.onclose=e=>{if(active===s&&!s.stopping)stop(s,'Disconnected');};
-    s.statsTimer=setInterval(()=>sample(s).catch(()=>{}),1000);
-    frameLoop(s);
-  }catch(error) {if(s)await stop(s,'Direct connection could not be established.');else status('WebRTC is unavailable in this browser.');}
+    ws.onerror=()=>{if(active===s&&!s.stopping&&s.ws===ws)stop(s,'Could not connect. Check your code and internet connection.');};
+    ws.onclose=e=>{if(active===s&&!s.stopping&&s.ws===ws)stop(s,'Disconnected');};
 }
 async function sample(s,final=false) {
   if(active!==s || !s.pc || (!final&&s.stopping)) return;
@@ -164,7 +188,7 @@ function summary(s) {
 }
 async function stop(s,reason='Disconnected') {
   if(active!==s||s.stopping)return;
-  s.stopping=true;clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);
+  s.stopping=true;clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);
   try{send(s,{type:'bye'});}catch(_){}
   try{await sample(s,true);}catch(_){}
   if(lastCompleted)el('previousSummary').value=lastCompleted;
@@ -174,12 +198,15 @@ async function stop(s,reason='Disconnected') {
   s.ws?.close(1000,'Session stopped');
   if(el('video').srcObject)el('video').srcObject.getTracks().forEach(t=>t.stop());
   el('video').srcObject=null;active=null;
+  el('create').disabled=false;el('scan').disabled=false;el('createdPairing').hidden=true;el('createdCode').textContent='';el('createdQr').replaceChildren();
   el('session').disabled=false;el('connect').disabled=false;el('disconnect').disabled=true;status(reason);
 }
-el('connect').onclick=connect;
+el('connect').onclick=()=>connect('join');
+el('create').onclick=()=>connect('create');
 el('disconnect').onclick=()=>{if(active)stop(active);};
 el('play').onclick=()=>el('video').play().catch(error=>status(error.message));
-window.addEventListener('pagehide',()=>{if(active)stop(active,'Page hidden/unloaded');});
+window.addEventListener('pagehide',()=>{scanner.stop();el('scanPanel').hidden=true;if(active)stop(active,'Disconnected');});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){scanner.stop();el('scanPanel').hidden=true;}});
 
 // QR links prefill only. No automatic connection or persistent code storage.
 const pairingLink=Pairing.query(window.location.search);
@@ -187,3 +214,11 @@ if(pairingLink.code)el('session').value=pairingLink.code;
 if(pairingLink.error)status(pairingLink.error);
 el('video').onplaying=()=>{if(active&&!active.stopping){active.streaming=true;status('Streaming');}};
 function addressFamily(address){return typeof address!=='string'||!address?'N/A':address.includes(':')?'IPv6':/^\d+(\.\d+){3}$/.test(address)?'IPv4':'N/A / obfuscated';}
+
+const scanner=new QrTools.CameraScanner({video:el('scanVideo'),canvas:el('scanCanvas'),onPayload:payload=>{
+  el('scanPanel').hidden=true;const code=Pairing.parseQr(payload);
+  if(!code){status('QR code is not a valid pairing code.');return;}
+  el('session').value=code;connect('join');
+},onError:message=>{el('scanPanel').hidden=true;status(message);}});
+el('scan').onclick=()=>{if(active)return;el('scanPanel').hidden=false;scanner.start();};
+el('cancelScan').onclick=()=>{scanner.stop();el('scanPanel').hidden=true;status('Scan cancelled');};
