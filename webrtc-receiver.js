@@ -22,7 +22,7 @@ function timingValues(a) {return `current ${fmt(a.current,' ms')} / avg ${fmt(a.
 let active=null, lastCompleted=null;
 function status(text) {el('status').textContent=text;}
 function send(s,m) {
-  if(active!==s || s.ws.readyState!==WebSocket.OPEN) return;
+  if(active!==s || s.stopping || s.ws?.readyState!==WebSocket.OPEN) return;
   const raw=JSON.stringify(m);
   if(new TextEncoder().encode(raw).length>=65536) throw Error('Signaling payload exceeds 64 KiB');
   s.ws.send(raw);
@@ -67,12 +67,19 @@ async function signal(s,m) {
     clearTimeout(s.waitingTimer);
     s.directTimer=setTimeout(()=>stop(s,"Direct connection could not be established."),45000);
     status("Starting stream");
-    await s.pc.setRemoteDescription({type:'offer',sdp:m.sdp});
+    const pc=s.pc;
+    await pc.setRemoteDescription({type:'offer',sdp:m.sdp});
     if(active!==s || s.stopping) return;
-    for(const c of s.pendingIce) await s.pc.addIceCandidate(c);
+    for(const c of s.pendingIce) {
+      await pc.addIceCandidate(c);
+      if(active!==s || s.stopping) return;
+    }
     s.pendingIce=[];
-    await s.pc.setLocalDescription(await s.pc.createAnswer());
-    send(s,{type:'answer',sdp:s.pc.localDescription.sdp});
+    const answer=await pc.createAnswer();
+    if(active!==s || s.stopping) return;
+    await pc.setLocalDescription(answer);
+    if(active!==s || s.stopping) return;
+    send(s,{type:'answer',sdp:pc.localDescription.sdp});
     clearInterval(s.readyTimer);
   } else if(m.type==='ice' && m.candidate) {
     if(s.pc.remoteDescription) await s.pc.addIceCandidate(m.candidate);
@@ -85,7 +92,7 @@ function bindPeer(s) {
   pc.ontrack=e=>{
     if(active!==s || s.stopping || e.track.kind!=='video') return;
     el('video').srcObject=e.streams[0]||new MediaStream([e.track]);
-    el('video').play().catch(()=>status('Video autoplay blocked; press Play video.'));
+    el('video').play().catch(()=>{if(active===s&&!s.stopping)status('Video autoplay blocked; press Play video.');});
     e.track.onended=()=>stop(s,'Disconnected');
   };
   pc.onconnectionstatechange=()=>{
@@ -97,10 +104,12 @@ function bindPeer(s) {
 }
 async function connect(intent='join') {
   scanner.stop();el('scanPanel').hidden=true;
-  if(active) return;
   let session;
   try{session=intent==='create'?Pairing.generate():Pairing.normalize(el('session').value);}catch{status('Secure code generation is unavailable. Enter a pairing code instead.');return;}
   if(!session){status('Invalid pairing code. Enter the 6-character code shown on your phone.');return;}
+  // A fresh attempt always retires the previous registration/peer, even if the
+  // phone cancelled consent before ever registering (no peer-left can arrive).
+  if(active) stop(active);
   el('session').value=session;
   let s;
   try {
@@ -111,8 +120,8 @@ async function connect(intent='join') {
     status('Connecting');
     s.waitingTimer=setTimeout(()=>stop(s,'The phone is not available. Start a new share and try its new code.'),300000);
     el('summary').value='Session running; disconnect to retain summary.';
-    el('createdPairing').hidden=true;el('create').disabled=true;el('scan').disabled=true;
-    el('session').disabled=true;el('connect').disabled=true;el('disconnect').disabled=false;
+    el('createdPairing').hidden=true;el('scan').disabled=true;
+    el('create').disabled=false;el('session').disabled=false;el('connect').disabled=false;el('disconnect').disabled=false;
     for(const id of ['connection','videoMetrics','bandwidth','latency']) list(id,{'Status':'Waiting for media'});
     openSignaling(s);
     s.statsTimer=setInterval(()=>sample(s).catch(()=>{}),1000);
@@ -130,17 +139,16 @@ function openSignaling(s){
       if(active!==s||s.stopping||s.ws!==ws||typeof e.data!=='string')return;
       if(new TextEncoder().encode(e.data).length>=65536)return;
       // Serialize SDP and trickle ICE async operations; ICE may arrive before setRemoteDescription completes.
-      s.chain=s.chain.then(()=>signal(s,JSON.parse(e.data))).catch(()=>stop(s,'Connection could not be established. Start a new share and try again.'));
+      s.chain=s.chain.then(()=>{if(active===s&&!s.stopping&&s.ws===ws)return signal(s,JSON.parse(e.data));}).catch(()=>stop(s,'Connection could not be established. Start a new share and try again.'));
     };
     ws.onerror=()=>{if(active===s&&!s.stopping&&s.ws===ws)stop(s,'Could not connect. Check your code and internet connection.');};
     ws.onclose=e=>{if(active===s&&!s.stopping&&s.ws===ws)stop(s,'Disconnected');};
 }
-async function sample(s,final=false) {
-  if(active!==s || !s.pc || (!final&&s.stopping)) return;
-  if(s.statsPending) {if(final) await s.statsPending;else return;}
+async function sample(s) {
+  if(active!==s || !s.pc || s.stopping || s.statsPending) return;
   const task=(async()=>{
     const report=await s.pc.getStats();
-    if(active!==s)return;
+    if(active!==s || s.stopping)return;
     const all=[...report.values()];
     const inbound=all.find(v=>v.type==='inbound-rtp'&&(v.kind==='video'||v.mediaType==='video'));
     const transport=all.find(v=>v.type==='transport'&&v.selectedCandidatePairId);
@@ -186,18 +194,25 @@ function summary(s) {
     'Estimated capture → receive':timingValues(s.timing.captureReceive),'Estimated receive → expected display':timingValues(s.timing.receiveDisplay),
     'Estimated capture → expected display':timingValues(s.timing.captureDisplay)}).map(([k,v])=>k+': '+v).join('\n');
 }
-async function stop(s,reason='Disconnected') {
-  if(active!==s||s.stopping)return;
-  s.stopping=true;clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);
+function stop(s,reason='Disconnected') {
+  if(!s||active!==s||s.stopping)return;
   try{send(s,{type:'bye'});}catch(_){}
-  try{await sample(s,true);}catch(_){}
+  s.stopping=true;
+  // Invalidate first: cleanup must not depend on native getStats or SDP promises.
+  // Summary retains the most recent one-second stats snapshot.
+  active=null;
+  clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);
   if(lastCompleted)el('previousSummary').value=lastCompleted;
   lastCompleted=summary(s);el('summary').value=lastCompleted;
   if(s.frameCallback!=null&&el('video').cancelVideoFrameCallback)el('video').cancelVideoFrameCallback(s.frameCallback);
-  if(s.pc){s.pc.onconnectionstatechange=null;s.pc.onicecandidate=null;s.pc.ontrack=null;s.pc.close();}
-  s.ws?.close(1000,'Session stopped');
-  if(el('video').srcObject)el('video').srcObject.getTracks().forEach(t=>t.stop());
-  el('video').srcObject=null;active=null;
+  if(s.pc){s.pc.onconnectionstatechange=null;s.pc.onicecandidate=null;s.pc.ontrack=null;s.pc.close();s.pc=null;}
+  if(s.ws){s.ws.onopen=null;s.ws.onmessage=null;s.ws.onerror=null;s.ws.onclose=null;s.ws.close(1000,'Session stopped');s.ws=null;}
+  if(el('video').srcObject)el('video').srcObject.getTracks().forEach(t=>{t.onended=null;t.stop();});
+  el('video').srcObject=null;
+  s.pendingIce=[];s.offered=false;s.registered=false;s.streaming=false;s.statsPending=false;s.frameCallback=null;
+  s.session='';s.intent=null;s.attempts=0;
+  s.chain=Promise.resolve();
+  for(const id of ['connection','videoMetrics','bandwidth','latency'])list(id,{'Status':'No active session'});
   el('create').disabled=false;el('scan').disabled=false;el('createdPairing').hidden=true;el('createdCode').textContent='';el('createdQr').replaceChildren();
   el('session').disabled=false;el('connect').disabled=false;el('disconnect').disabled=true;status(reason);
 }

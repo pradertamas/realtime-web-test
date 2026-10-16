@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-function env(frameSupport=true,search=''){
+function env(frameSupport=true,search='',receiverSource=fs.readFileSync('webrtc-receiver.js','utf8')){
  let now=0,id=0;const nodes=new Map(),timers=new Map();
  const node=()=>({value:' 7k4m2q ',disabled:false,textContent:'',srcObject:null,children:[],play:()=>Promise.resolve(),replaceChildren(...v){this.children=v;}});
  const document={getElementById(k){if(!nodes.has(k))nodes.set(k,node());return nodes.get(k);},createElement:node,addEventListener(){}};
@@ -10,10 +10,11 @@ function env(frameSupport=true,search=''){
  class PC{static instances=[];constructor(config){this.config=config;this.connectionState='new';this.iceConnectionState='new';this.signalingState='stable';this.ice=[];this.report=new Map();PC.instances.push(this);}async setRemoteDescription(d){await Promise.resolve();this.remoteDescription=d;}async addIceCandidate(c){assert.ok(this.remoteDescription);this.ice.push(c);}async createAnswer(){return{type:'answer',sdp:'answer-sdp'};}async setLocalDescription(d){this.localDescription=d;}async getStats(){return this.report;}close(){this.closed=true;}}
  const context=vm.createContext({console,document,window:{location:{search},addEventListener(){}},performance:{now:()=>now},RTCPeerConnection:PC,WebSocket:WS,TextEncoder,URLSearchParams,URL,crypto:require("node:crypto").webcrypto,QrTools:{render(){},CameraScanner:class{stop(){}start(){}}},MediaStream:class{constructor(t){this.t=t;}getTracks(){return this.t;}},setInterval(f,ms){timers.set(++id,{f,ms});return id;},clearInterval(i){timers.delete(i);},setTimeout(f,ms){timers.set(++id,{f,ms});return id;},clearTimeout(i){timers.delete(i);}});
  vm.runInContext(fs.readFileSync('pairing.js','utf8'),context);
- vm.runInContext(fs.readFileSync('webrtc-receiver.js','utf8'),context);
+ vm.runInContext(receiverSource,context);
  return{run:s=>vm.runInContext(s,context),nodes,WS,PC,timers,time:n=>now=n};
 }
-(async()=>{
+module.exports={env};
+if(require.main===module)(async()=>{
  const e=env();await e.run('connect()');assert.equal(e.PC.instances.length,1);const ws=e.WS.instances[0];ws.open();ws.message({type:'registration',status:'ok'});await e.run('active.chain');const pc=e.PC.instances[0];
  assert.match(ws.url,/intent=join/);assert.match(ws.url,/role=receiver/);assert.equal(ws.sent[0].type,'ready');assert.equal(pc.config.iceTransportPolicy,'all');
  ws.message({type:'ice',candidate:{candidate:'early',sdpMLineIndex:0}});ws.message({type:'offer',sdp:'offer-sdp'});ws.message({type:'ice',candidate:{candidate:'late',sdpMLineIndex:0}});

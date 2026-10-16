@@ -56,6 +56,7 @@ node verify.cjs
 node verify-webrtc.cjs
 node verify-pairing.cjs
 node verify-qr-pairing.cjs
+node verify-cancel-retry.cjs
 node --check pairing.js
 node --check webrtc-receiver.js
 ```
@@ -71,6 +72,13 @@ have a manual-code fallback. No runtime CDN is required.
 Physical stability still requires device/browser runs. Full four-flow matrix:
 sibling ui-capture-test/SYMMETRIC_PAIRING.md. Release the intent-aware relay and
 both updated clients together; no deployment was performed here.
+
+Cancel/retry lifecycle audit and no-reload physical retest:
+[CANCEL_RETRY.md](CANCEL_RETRY.md). A fresh Create pairing or Connect closes the
+previous attempt; Disconnect also resets it. Android consent cancellation before
+registration leaves a browser-created pairing waiting, so it can be replaced
+without reloading. Stop retains the latest periodic stats snapshot rather than
+waiting for a possibly stalled native getStats call.
 
 The historical PoC 4B TURN sources/tests/docs are preserved exclusively under
 experiments/poc4b/. They are not loaded by this receiver or part of the release.
