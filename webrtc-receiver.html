@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoC 4A WebRTC receiver</title><link rel="stylesheet" href="style.css"><script defer src="webrtc-receiver.js"></script></head>
+<body><nav><a href="index.html">Home</a></nav><h1>PoC 4A WebRTC receiver</h1>
+<section class="panel"><label>Session ID <input id="session" value="poc4a_123456" maxlength="64" autocomplete="off" spellcheck="false"></label>
+<button id="connect">Connect</button> <button id="disconnect" disabled>Disconnect</button><p id="status" role="status">Disconnected</p>
+<p>Connect here first, then start a fresh Android share. STUN only, no TURN. Relay must support bidirectional signaling. Reconnect both endpoints with fresh Android consent after stopping.</p></section>
+<section class="panel"><video id="video" autoplay playsinline muted controls style="display:block;max-width:100%;width:auto;max-height:75vh;object-fit:contain;background:#000"></video><button id="play">Play video</button></section>
+<div class="grid"><section class="panel"><h2>Connection</h2><dl id="connection" class="metrics"></dl></section>
+<section class="panel"><h2>Video</h2><dl id="videoMetrics" class="metrics"></dl></section>
+<section class="panel"><h2>Bandwidth</h2><dl id="bandwidth" class="metrics"></dl></section>
+<section class="panel"><h2>Estimated WebRTC frame timing</h2><dl id="latency" class="metrics"></dl><p>Best effort browser timestamps. Capture time uses an estimated remote clock mapping. These values are not laboratory glass-to-glass latency; expected display is a prediction. Hidden tabs can affect measurements. Missing timestamps: N/A.</p></section></div>
+<section class="panel"><h2>Last session summary</h2><textarea id="summary" readonly rows="18" spellcheck="false">No completed session.</textarea></section>
+</body></html>

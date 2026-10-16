@@ -52,3 +52,34 @@ Canvas and WebGL use one shared RAF loop and the latest data, with small local p
 ## Local verification
 
 Run `node --check common.js`, `node --check sender.js`, `node --check receiver.js`, and `node verify.cjs`. The verification harness uses native Node APIs and deterministic browser stubs; it does not replace a real GPU/browser test. `node verify.cjs --remote` additionally attempts an isolated 100-message, approximately 10 Hz relay round trip using a random session, when Node provides a native WebSocket API and network access is available.
+
+## PoC 4A WebRTC receiver
+
+Open `webrtc-receiver.html` through a static HTTP server or HTTPS GitHub Pages.
+For a local desktop test, run `npx --yes http-server . -p 8080 -c-1` here and
+open `http://localhost:8080/webrtc-receiver.html`. Enter the same 6–64-character
+session ID as Android and Connect before starting a fresh Android share.
+
+**Deployment prerequisite:** the public relay originally forwarded sender →
+receiver only. The local `realtime-relay` patch must be manually deployed before
+this receiver can exchange ready/answer/ICE with Android. This work does not
+publish the page or deploy the relay.
+
+The new page uses a normal autoplay/playsinline video element. Media uses
+WebRTC P2P, never WebSocket. Signaling uses the existing session/role URL model,
+with receiver ready, Android offer, browser answer and bidirectional trickle ICE.
+ICE config is isolated at the top of `webrtc-receiver.js`: public Google STUN,
+policy all, no TURN. Stopping requires reconnecting both sides and fresh Android
+capture consent. Existing sample sender/receiver/common.js are unchanged.
+
+Run `node verify.cjs`, `node --check webrtc-receiver.js` and
+`node verify-webrtc.cjs`. The latter checks asynchronous signaling order, early
+ICE, stats/timing fallbacks, bitrate, selected pair, summary retention and cleanup
+with fake APIs; it does not establish a physical P2P PASS.
+
+Stats update about once per second. Byte counters are RTP stats, not a billable
+wire total; averages include session setup. Estimated WebRTC frame timing is
+best effort requestVideoFrameCallback metadata, not laboratory glass-to-glass
+latency. Unsupported stats/timestamps show N/A. A selectable summary remains
+after Disconnect. Follow `ui-capture-test/POC4A.md` in the sibling Android project
+for the audit, protocol, lifecycle and exact >=120-second Samsung/desktop test.
