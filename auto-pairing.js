@@ -3,8 +3,42 @@
 const PAIRING_ROTATION_MS=300000;
 const PAIRING_INPUT_DEBOUNCE_MS=250;
 let inputTimer=null,recoveryTimer=null,pageActive=true;
+const remoteEntry=RemoteLink.entry(window.location.search,window.location.hash);
+const remoteMode=remoteEntry.mode==='remote';
+const REMOTE_RESOLVE_URL='https://realtime-relay-k28l.onrender.com/remote/resolve';
+let lookupId=0,lookupAbort=null,lookupTimer=null;
+function remoteScreen(message,retry=true){
+  receiverView('CONNECTING');
+  el('remotePanel').hidden=false;el('connectingMessage').hidden=true;
+  el('remoteMessage').textContent=message;el('remoteRetry').hidden=!retry;
+  el('disconnect').hidden=!active;el('play').hidden=true;
+}
+async function resolveRemote(){
+  if(!remoteMode||!pageActive||lookupAbort||active)return;
+  if(remoteEntry.error){remoteScreen(remoteEntry.error,false);return;}
+  const id=++lookupId,abort=new AbortController();lookupAbort=abort;
+  const timeout=setTimeout(()=>abort.abort(),15000);
+  lookupTimer=timeout;
+  remoteScreen('Connecting to phone...',false);
+  try{
+    const response=await fetch(REMOTE_RESOLVE_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:remoteEntry.token}),cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:abort.signal});
+    const result=await response.json();
+    if(!pageActive||id!==lookupId)return;
+    if(!response.ok||result.status!=='available'||!Pairing.normalize(result.session)){
+      remoteScreen('This phone is not currently available for screen sharing. Open the sharing app on the phone and try again.');return;
+    }
+    el('session').value=Pairing.normalize(result.session);
+    await connect('join');
+    if(pageActive&&id===lookupId){
+      if(active)remoteScreen('Waiting for approval on the phone...',false);
+      else remoteScreen('This phone is not currently available for screen sharing. Open the sharing app on the phone and try again.');
+    }
+  }catch{if(pageActive&&id===lookupId)remoteScreen('This phone is not currently available for screen sharing. Open the sharing app on the phone and try again.');}
+  finally{clearTimeout(timeout);if(id===lookupId){lookupAbort=null;lookupTimer=null;}}
+}
 function clearPairingInput(){clearTimeout(inputTimer);inputTimer=null;}
-function editablePairing(){return !active||['creating','waiting'].includes(active.phase)&&active.intent==='create';}
+function editablePairing(){return !remoteMode&&(!active||['creating','waiting'].includes(active.phase)&&active.intent==='create');}
 function showPairingError(text){el('pairingError').textContent=text;}
 function joinAutomatically(code){
   clearPairingInput();
@@ -40,6 +74,7 @@ onPairingState=(s,phase)=>{
 onPairingEnded=reason=>{
   clearPairingInput();clearTimeout(recoveryTimer);
   el('session').value='';showPairingError(reason);
+  if(remoteMode){remoteScreen('Screen sharing ended. Try again when the phone is waiting.');return;}
   if(pageActive)recoveryTimer=setTimeout(()=>{recoveryTimer=null;if(pageActive&&!active)connect('create');},1000);
 };
 el('session').oninput=event=>{if(event?.isComposing){clearPairingInput();return;}pairingInput();};
@@ -64,10 +99,11 @@ scanner.onPayload=payload=>{
   if(code)joinAutomatically(code);else showPairingError('QR code is not a valid pairing code.');
 };
 window.addEventListener('pagehide',()=>{
+  lookupId++;lookupAbort?.abort();lookupAbort=null;
+  clearTimeout(lookupTimer);lookupTimer=null;
   pageActive=false;clearPairingInput();clearTimeout(recoveryTimer);recoveryTimer=null;
 });
-window.addEventListener('pageshow',()=>{if(!pageActive){pageActive=true;if(!active)connect('create');}});
-connect('create');
-// With no Connect button, opening an explicit valid pairing link uses the same
-// debounced JOIN as pasting its code. Plain page loads stay on their own CREATE.
-if(pairingLink.code)pairingInput();
+window.addEventListener('pageshow',()=>{if(!pageActive){pageActive=true;if(!active){if(remoteMode)resolveRemote();else connect('create');}}});
+el('remoteRetry').onclick=()=>resolveRemote();
+if(remoteMode)resolveRemote();else if(pairingLink.code)connect('join');else connect('create');
+// URL routes are exclusive; only manual six-character input needs a debounce.

@@ -41,7 +41,7 @@ function input(e,value){e.nodes.get('session').value=value;e.nodes.get('session'
  e.fire('pageshow');assert.equal(e.run('active.intent'),'create');e.fire('pagehide');
  const collision=page();for(let i=0;i<4;i++)await register(collision,'conflict');
  assert.equal(collision.WS.instances.length,4);await collision.advance(1000);assert.equal(collision.WS.instances.length,5);collision.fire('pagehide');
- const link=page('?session=7K4M2Q');assert.equal(link.nodes.get('session').value,'7K4M2Q');assert.equal(link.run('active.intent'),'create');await link.advance(250);assert.equal(link.run('active.intent'),'join');link.fire('pagehide');
+ const link=page('?session=7K4M2Q');assert.equal(link.nodes.get('session').value,'7K4M2Q');assert.equal(link.run('active.intent'),'join');assert.equal(link.WS.instances.length,1);link.fire('pagehide');
  const html=fs.readFileSync('webrtc-receiver.html','utf8');assert.doesNotMatch(html,/<button[^>]*id="(?:create|connect)"/);
  assert.match(html,/maxlength="6"/);assert.match(html,/src="auto-pairing.js\?v=[A-Za-z0-9_-]+"/);
  console.log('PASS auto-pairing: page CREATE, QR/code, bounded collisions, debounced lowercase/paste JOIN, invalid/duplicate input, QR replacement, failed JOIN recovery, Stop/peer-left recovery, waiting-only rotation, stale peer cleanup and navigation timers.');

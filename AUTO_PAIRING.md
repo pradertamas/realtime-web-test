@@ -21,7 +21,7 @@ waits for completion. An explicit successful QR scan joins immediately. The
 existing camera implementation still decodes locally and stops tracks on
 success/cancel/hide/navigation; no decoder/dependency change.
 
-Valid ?session=<CODE> links also join after 250 ms now that Connect is removed.
+Valid ?session=<CODE> links directly JOIN without an own CREATE (see REMOTE_LINK.md).
 Ordinary page opening stays on CREATE. Invalid links show an error without JOIN.
 
 CREATE collision: fresh code and at most four attempts in one registration

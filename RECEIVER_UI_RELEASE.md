@@ -54,7 +54,7 @@ receiver-release.json contains the one editable release version. For example,
 20261017-1. Bump it for every release that changes receiver HTML/own JS/CSS,
 then run node update-receiver-release.cjs. It deterministically writes explicit
 ?v=<release> URLs into static HTML for style.css, receiver-ui.css, pairing.js,
-qr-tools.js, webrtc-receiver.js and auto-pairing.js (and future own JS/CSS refs).
+qr-tools.js, webrtc-receiver.js, remote-link.js and auto-pairing.js (and future own JS/CSS refs).
 Run node verify-cache-busting.cjs; it fails on a missing or mismatched version,
 checks all critical refs and tests version changes/idempotence without editing
 release files. There is no additional browser bootstrap or JSON fetch.

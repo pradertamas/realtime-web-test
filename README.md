@@ -6,8 +6,8 @@ There are no Create/Connect/Continue buttons. Scan the other device or enter its
 code to replace your waiting pairing and join. Android always sends and offers;
 browser always receives and answers. Only actual peer presence triggers fresh
 Android screen-capture consent, never merely opening the app.
-A valid ?session=<CODE> link now joins through the same 250 ms debounce as code
-entry, because there is no Connect button. Invalid links do not join.
+A valid ?session=<CODE> link directly joins without an own CREATE. Manual code
+entry retains its 250 ms debounce. Invalid links do not join their supplied code.
 Input is trimmed, uppercased and validated against
 23456789ABCDEFGHJKLMNPQRSTUVWXYZ. No long session ID, account or receiver app.
 
@@ -23,6 +23,7 @@ Direct connection could not be established.
 - webrtc-receiver.html: pairing input, video and collapsible diagnostics.
 - webrtc-receiver.js: direct signaling/media, stats, timing and summaries.
 - auto-pairing.js: startup, 250 ms code debounce, recovery and waiting rotation.
+- remote-link.js: strict persistent-link validation and startup routing helpers.
 - pairing.js: short-code validation and query parsing; no persistence.
 - qr-tools.js and vendor/: local QR scanning/generation, pinned source and licenses.
 - receiver-ui.css and style.css: local styles.
@@ -66,6 +67,7 @@ node verify-auto-pairing.cjs
 node verify-receiver-state.cjs
 node verify-cache-busting.cjs
 node verify-orientation.cjs
+node verify-remote-link.cjs
 node --check pairing.js
 node --check webrtc-receiver.js
 ```
@@ -120,3 +122,10 @@ Android content resize is now reflected in Advanced diagnostics as `Current
 received video` (actual videoWidth x videoHeight) alongside inbound frame
 width/height. Existing contain/full-viewport layout stays unchanged; resolution
 changes keep the same STREAMING view. verify-orientation.cjs covers these rules.
+
+Persistent Android remote links use `#device=<TOKEN>` without a browser CREATE.
+They resolve a waiting phone to its current short session, then use ordinary
+JOIN and fresh phone approval. Unavailable/ended pages offer Try again without
+polling or token expiry. Explicit ?session links now directly JOIN without an
+unnecessary own CREATE. See [REMOTE_LINK.md](REMOTE_LINK.md). The relay endpoint
+and updated static assets need manual release; no deployment was performed.

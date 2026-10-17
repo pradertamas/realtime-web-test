@@ -1,5 +1,5 @@
 ﻿<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css?v=20261017-2"><link rel="stylesheet" href="receiver-ui.css?v=20261017-2"><script defer src="vendor/qrcode-generator-2.0.4.js"></script><script defer src="vendor/jsqr-1.4.0.js"></script><script defer src="pairing.js?v=20261017-2"></script><script defer src="qr-tools.js?v=20261017-2"></script><script defer src="webrtc-receiver.js?v=20261017-2"></script><script defer src="auto-pairing.js?v=20261017-2"></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css?v=20261017-4"><link rel="stylesheet" href="receiver-ui.css?v=20261017-4"><script defer src="vendor/qrcode-generator-2.0.4.js"></script><script defer src="vendor/jsqr-1.4.0.js"></script><script defer src="pairing.js?v=20261017-4"></script><script defer src="qr-tools.js?v=20261017-4"></script><script defer src="webrtc-receiver.js?v=20261017-4"></script><script defer src="remote-link.js?v=20261017-4"></script><script defer src="auto-pairing.js?v=20261017-4"></script></head>
 <body><main id="receiver" class="receiver" data-view="PAIRING">
 <header class="receiver-header"><h1>Screen Receiver</h1><p>Share your Android screen with this browser.</p></header>
 <section id="pairingPanel" class="panel pairing-panel" aria-label="Pair your phone">
@@ -13,7 +13,7 @@
 <p id="pairingHelp">Scan another device or enter its six-character code. Keep the code private.</p><p id="pairingError" role="alert"></p>
 <section id="scanPanel" hidden><video id="scanVideo" autoplay muted playsinline></video><canvas id="scanCanvas" hidden></canvas><button id="cancelScan">Cancel scan</button></section>
 </section>
-<section id="connectingPanel" class="connecting-panel" aria-label="Connecting" aria-live="polite" hidden aria-hidden="true"><p>Waiting for screen sharing...</p></section>
+<section id="connectingPanel" class="connecting-panel" aria-label="Connecting" aria-live="polite" hidden aria-hidden="true"><p id="connectingMessage">Waiting for screen sharing...</p><section id="remotePanel" hidden><p id="remoteMessage" role="status" aria-live="polite"></p><button id="remoteRetry" hidden>Try again</button></section></section>
 <section id="videoPanel" class="receiver-video" aria-label="Shared screen" hidden aria-hidden="true"><video id="video" autoplay playsinline muted controls aria-label="Live Android screen"></video></section>
 <div class="pairing-actions"><button id="play" hidden>Play video</button><button id="disconnect" disabled hidden>Stop</button></div>
 <details id="diagnostics"><summary>Advanced diagnostics</summary>
