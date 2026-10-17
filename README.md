@@ -65,6 +65,7 @@ node verify-cancel-retry.cjs
 node verify-auto-pairing.cjs
 node verify-receiver-state.cjs
 node verify-cache-busting.cjs
+node verify-orientation.cjs
 node --check pairing.js
 node --check webrtc-receiver.js
 ```
@@ -114,3 +115,8 @@ Pinned vendor filenames remain unchanged. No runtime timestamp, manifest fetch,
 bundler or service worker is added. Same-release assets remain cacheable.
 See [RECEIVER_UI_RELEASE.md](RECEIVER_UI_RELEASE.md) for state rules, cache scope
 and the physical retest. No deployment was performed.
+
+Android content resize is now reflected in Advanced diagnostics as `Current
+received video` (actual videoWidth x videoHeight) alongside inbound frame
+width/height. Existing contain/full-viewport layout stays unchanged; resolution
+changes keep the same STREAMING view. verify-orientation.cjs covers these rules.

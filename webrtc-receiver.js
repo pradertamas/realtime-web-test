@@ -208,7 +208,9 @@ async function sample(s) {
     list('connection',{'peerConnectionState':s.pc.connectionState,'iceConnectionState':s.pc.iceConnectionState,'signalingState':s.pc.signalingState,
       'Selected local / remote candidate':s.latest.candidate,'Protocol':s.latest.protocol,'Relay protocol local / remote':s.latest.relayProtocol,
       'Address family local / remote':s.latest.family,'Selected pair state':pair?.state,'Current RTT':fmt(s.rtt.current,' ms')});
-    list('videoMetrics',{'Negotiated codec':codec?.mimeType,'Received width':inbound?.frameWidth,'Received height':inbound?.frameHeight,
+    const video=el('video');
+    list('videoMetrics',{'Current received video':video.videoWidth>0&&video.videoHeight>0?`${video.videoWidth} × ${video.videoHeight}`:NA,
+      'Negotiated codec':codec?.mimeType,'Received width':inbound?.frameWidth,'Received height':inbound?.frameHeight,
       'Received FPS (delta)':fmt(receivedFps),'Decoded FPS (browser framesPerSecond)':fmt(inbound?.framesPerSecond),'Decoded FPS (delta)':fmt(decodedFps),'Frames received':inbound?.framesReceived,'Frames decoded':inbound?.framesDecoded,
       'Frames dropped':inbound?.framesDropped,'Key frames decoded':inbound?.keyFramesDecoded,'Packets received':inbound?.packetsReceived,'Packets lost':inbound?.packetsLost});
     list('bandwidth',{'Cumulative RTP bytes received':bytes,'Current bitrate':fmt(bitrate,' bps'),'Average bitrate (full session)':fmt(s.latest.averageBitrate,' bps'),
