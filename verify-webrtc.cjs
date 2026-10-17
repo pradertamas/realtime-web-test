@@ -2,7 +2,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 function env(frameSupport=true,search='',receiverSource=fs.readFileSync('webrtc-receiver.js','utf8')){
  let now=0,id=0;const nodes=new Map(),timers=new Map(),events=new Map();
- const node=()=>({value:' 7k4m2q ',disabled:false,textContent:'',srcObject:null,children:[],play:()=>Promise.resolve(),replaceChildren(...v){this.children=v;}});
+ const node=()=>({value:' 7k4m2q ',disabled:false,textContent:'',srcObject:null,readyState:0,videoWidth:0,videoHeight:0,dataset:{},attributes:{},setAttribute(k,v){this.attributes[k]=v;},pause(){},load(){this.readyState=0;this.videoWidth=0;this.videoHeight=0;},children:[],play:()=>Promise.resolve(),replaceChildren(...v){this.children=v;}});
  const document={getElementById(k){if(!nodes.has(k))nodes.set(k,node());return nodes.get(k);},createElement:node,addEventListener(){}};
  document.getElementById('session');
  if(frameSupport){document.getElementById('video').requestVideoFrameCallback=f=>{document.getElementById('video').callback=f;return ++id;};document.getElementById('video').cancelVideoFrameCallback=()=>{};}
@@ -48,6 +48,6 @@ if(require.main===module)(async()=>{
  assert.equal(exhausted.WS.instances.length,4);assert.equal(exhausted.run('active'),null);assert.equal(exhausted.nodes.get('status').textContent,'Pairing code already in use.');
  const failed=env();await failed.run('connect()');const fp=failed.PC.instances[0];fp.connectionState='failed';const failing=failed.run('active');fp.onconnectionstatechange();await new Promise(resolve=>setImmediate(resolve));assert.equal(failed.run('active'),null);assert.equal(failed.nodes.get('status').textContent,'Direct connection could not be established.');
  assert.equal(pc.config.iceServers.length,1);assert.match(pc.config.iceServers[0].urls,/^stun:/);assert.equal(e.run('typeof NetworkTest'),'undefined');
- for(const file of fs.readdirSync('.').filter(f=>f.endsWith('.html'))){for(const [,ref] of fs.readFileSync(file,'utf8').matchAll(/(?:src|href)="([^"#]+)"/g)){if(!/^(https?:|data:)/.test(ref))assert.ok(fs.existsSync(ref),file+': '+ref);}}
+ for(const file of fs.readdirSync('.').filter(f=>f.endsWith('.html'))){for(const [,ref] of fs.readFileSync(file,'utf8').matchAll(/(?:src|href)="([^"#]+)"/g)){if(!/^(https?:|data:)/.test(ref))assert.ok(fs.existsSync(ref.split(/[?#]/)[0]),file+': '+ref);}}
  console.log('PASS direct STUN-only signaling/early ICE, duplicate offer, missing stats, bitrate, selected pair, frame timing, summary/cleanup/reconnect, code normalization, QR query prefill without auto-connect, invalid code, TURN-config rejection, direct failure and static links.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

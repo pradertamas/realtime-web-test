@@ -26,6 +26,8 @@ Direct connection could not be established.
 - pairing.js: short-code validation and query parsing; no persistence.
 - qr-tools.js and vendor/: local QR scanning/generation, pinned source and licenses.
 - receiver-ui.css and style.css: local styles.
+- receiver-release.json and update-receiver-release.cjs: single release version
+  and deterministic HTML asset URL updater (development/release tools only).
 - index.html: entry page.
 
 Advanced diagnostics retain ICE/peer state, selected candidates, resolution,
@@ -61,6 +63,8 @@ node verify-pairing.cjs
 node verify-qr-pairing.cjs
 node verify-cancel-retry.cjs
 node verify-auto-pairing.cjs
+node verify-receiver-state.cjs
+node verify-cache-busting.cjs
 node --check pairing.js
 node --check webrtc-receiver.js
 ```
@@ -87,3 +91,26 @@ waiting for a possibly stalled native getStats call.
 
 The historical PoC 4B TURN sources/tests/docs are preserved exclusively under
 experiments/poc4b/. They are not loaded by this receiver or part of the release.
+
+## Receiver views and asset cache version
+
+PAIRING shows code/QR and joining controls with the video panel fully hidden.
+Actual peer presence switches to CONNECTING, still without a black video panel.
+The first renderable frame switches to STREAMING and hides the pairing controls.
+Stop/permanent disconnect returns to automatic pairing. Brief disconnected
+states get one four-second grace timer; recovery cancels it.
+
+Before publishing a changed receiver release, change `version` in
+`receiver-release.json` to a new value, then run:
+
+```text
+node update-receiver-release.cjs
+node verify-cache-busting.cjs
+```
+
+Publish the updated HTML together with its own JS/CSS. The updater writes the
+same `?v=<version>` to every own receiver JS/CSS reference, including style.css.
+Pinned vendor filenames remain unchanged. No runtime timestamp, manifest fetch,
+bundler or service worker is added. Same-release assets remain cacheable.
+See [RECEIVER_UI_RELEASE.md](RECEIVER_UI_RELEASE.md) for state rules, cache scope
+and the physical retest. No deployment was performed.

@@ -28,7 +28,8 @@ function input(e,value){e.nodes.get('session').value=value;e.nodes.get('session'
  const qr=await register(e);assert.match(qr.ws.url,/intent=join/);
  qr.ws.message({type:'peer-present'});qr.ws.message({type:'offer',sdp:'new-offer'});await qr.s.chain;
  assert.equal(qr.ws.sent.filter(m=>m.type==='answer').length,1);
- qr.pc.connectionState='connected';qr.pc.onconnectionstatechange();e.nodes.get('video').onplaying();
+ qr.pc.connectionState='connected';qr.pc.onconnectionstatechange();qr.pc.ontrack({track:{kind:'video',stop(){}},streams:[]});
+ Object.assign(e.nodes.get('video'),{readyState:2,videoWidth:720,videoHeight:1560});e.nodes.get('video').onloadeddata();
  const count=e.WS.instances.length;await e.advance(300000);assert.equal(e.WS.instances.length,count); // Never rotate media.
  e.nodes.get('disconnect').onclick();assert.equal(qr.pc.closed,true);await e.advance(1000);
  const ready=await register(e);assert.equal(ready.s.intent,'create');
@@ -42,6 +43,6 @@ function input(e,value){e.nodes.get('session').value=value;e.nodes.get('session'
  assert.equal(collision.WS.instances.length,4);await collision.advance(1000);assert.equal(collision.WS.instances.length,5);collision.fire('pagehide');
  const link=page('?session=7K4M2Q');assert.equal(link.nodes.get('session').value,'7K4M2Q');assert.equal(link.run('active.intent'),'create');await link.advance(250);assert.equal(link.run('active.intent'),'join');link.fire('pagehide');
  const html=fs.readFileSync('webrtc-receiver.html','utf8');assert.doesNotMatch(html,/<button[^>]*id="(?:create|connect)"/);
- assert.match(html,/maxlength="6"/);assert.match(html,/src="auto-pairing.js"/);
+ assert.match(html,/maxlength="6"/);assert.match(html,/src="auto-pairing.js\?v=[A-Za-z0-9_-]+"/);
  console.log('PASS auto-pairing: page CREATE, QR/code, bounded collisions, debounced lowercase/paste JOIN, invalid/duplicate input, QR replacement, failed JOIN recovery, Stop/peer-left recovery, waiting-only rotation, stale peer cleanup and navigation timers.');
 })().catch(e=>{console.error('FAIL auto-pairing:',e);process.exitCode=1;});

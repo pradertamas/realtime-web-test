@@ -39,7 +39,9 @@ async function offer(e,p){
       assert.equal(e.run('active'),fresh.s);old=fresh;
     }
     await offer(e,old);old.pc.connectionState='connected';old.pc.onconnectionstatechange();
-    e.nodes.get('video').onplaying();assert.equal(e.nodes.get('status').textContent,'Streaming');
+    old.pc.ontrack({track:{kind:'video',stop(){}},streams:[]});
+    Object.assign(e.nodes.get('video'),{readyState:2,videoWidth:720,videoHeight:1560});
+    e.nodes.get('video').onloadeddata();assert.equal(e.nodes.get('status').textContent,'Streaming');
     await e.run('stop(active)');await e.run('stop(null)');assert.equal(e.timers.size,0);
     assert.equal(e.nodes.get('disconnect').disabled,true);
   }

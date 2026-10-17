@@ -2,6 +2,7 @@
 // Proven PoC 4A media/signaling flow: STUN discovery, ALL policy, no TURN credentials.
 const RTC_CONFIG = {iceServers:[{urls:"stun:stun.l.google.com:19302"}],iceTransportPolicy:"all"};
 const SIGNALING_URL = 'wss://realtime-relay-k28l.onrender.com/ws';
+const DISCONNECT_GRACE_MS = 4000;
 const el = id => document.getElementById(id);
 const NA = 'N/A';
 const number = v => typeof v === 'number' && Number.isFinite(v);
@@ -21,6 +22,20 @@ function observe(a,value) {
 function timingValues(a) {return `current ${fmt(a.current,' ms')} / avg ${fmt(a.count?a.sum/a.count:null,' ms')} / max ${fmt(a.max,' ms')}`;}
 let active=null, lastCompleted=null, onPairingEnded=null, onPairingState=null;
 function pairingState(s,phase){s.phase=phase;if(onPairingState)onPairingState(s,phase);}
+function receiverView(view) {
+  for(const [id,visible] of [['pairingPanel',view==='PAIRING'],['connectingPanel',view==='CONNECTING'],['videoPanel',view==='STREAMING']]){
+    const node=el(id);node.hidden=!visible;node.setAttribute('aria-hidden',String(!visible));
+  }
+  el('receiver').dataset.view=view;
+  if(view==='STREAMING')el('diagnostics').open=false;
+}
+function displayFirstFrame(s) {
+  if(active!==s||s.stopping||!el('video').srcObject)return;
+  if(!s.streaming){
+    s.streaming=true;pairingState(s,'streaming');status('Streaming');
+    receiverView('STREAMING');el('play').hidden=true;
+  }
+}
 function status(text) {el('status').textContent=text;}
 function send(s,m) {
   if(active!==s || s.stopping || s.ws?.readyState!==WebSocket.OPEN) return;
@@ -33,7 +48,7 @@ function frameLoop(s) {
   if(!video.requestVideoFrameCallback) return;
   s.frameCallback=video.requestVideoFrameCallback((now,m)=>{
     if(active!==s || s.stopping) return;
-    if(!s.streaming){s.streaming=true;status('Streaming');}
+    displayFirstFrame(s);
     observe(s.timing.captureReceive,number(m.receiveTime)&&number(m.captureTime)?m.receiveTime-m.captureTime:null);
     observe(s.timing.receiveDisplay,number(m.expectedDisplayTime)&&number(m.receiveTime)?m.expectedDisplayTime-m.receiveTime:null);
     observe(s.timing.captureDisplay,number(m.expectedDisplayTime)&&number(m.captureTime)?m.expectedDisplayTime-m.captureTime:null);
@@ -57,7 +72,7 @@ async function signal(s,m) {
     return;
   }
   if(['peer-present','offer','ice'].includes(m.type)&&!s.registered)throw Error('Pairing registration has not succeeded.');
-  if(m.type==='peer-present'){clearTimeout(s.rotationTimer);pairingState(s,'connecting');status('Waiting for the phone to allow sharing...');return;}
+  if(m.type==='peer-present'){clearTimeout(s.rotationTimer);pairingState(s,'connecting');receiverView('CONNECTING');status('Waiting for the phone to allow sharing...');return;}
   if(m.type==='peer-left'){await stop(s,'Disconnected');return;}
   if(m.type==='ready') {send(s,{type:'ready'});return;}
   if(m.type==='bye') {await stop(s,'Android stopped');return;}
@@ -67,6 +82,7 @@ async function signal(s,m) {
     if(typeof m.sdp!=='string') throw Error('Invalid offer');
     s.offered=true;
     pairingState(s,'connecting');
+    receiverView('CONNECTING');
     clearTimeout(s.waitingTimer);
     s.directTimer=setTimeout(()=>stop(s,"Direct connection could not be established."),45000);
     status("Starting stream");
@@ -95,15 +111,28 @@ function bindPeer(s) {
   pc.ontrack=e=>{
     if(active!==s || s.stopping || e.track.kind!=='video') return;
     el('video').srcObject=e.streams[0]||new MediaStream([e.track]);
-    el('video').play().catch(()=>{if(active===s&&!s.stopping)status('Video autoplay blocked; press Play video.');});
+    const video=el('video');
+    // Per-session closures prevent events from retired streams revealing old media.
+    // loadeddata is also needed when hidden-video compositing suppresses rVFC.
+    const fallback=()=>{if(video.readyState>=2&&video.videoWidth>0&&video.videoHeight>0)displayFirstFrame(s);};
+    video.onloadeddata=fallback;video.onplaying=fallback;
+    video.play().catch(()=>{if(active===s&&!s.stopping){el('play').hidden=false;status('Press Play video to start sharing.');}});
     e.track.onended=()=>stop(s,'Disconnected');
   };
-  pc.onconnectionstatechange=()=>{
+  const networkState=()=>{
     if(active!==s || s.stopping) return;
-    if(pc.connectionState==='connected'){clearTimeout(s.directTimer);pairingState(s,'connected');status(s.streaming?'Streaming':'Connected');}
-    if(pc.connectionState==='disconnected'){status('Disconnected');clearTimeout(s.directTimer);s.directTimer=setTimeout(()=>stop(s,'Direct connection could not be established.'),15000);}
-    if(pc.connectionState==='failed') stop(s,'Direct connection could not be established.');
+    const states=[pc.connectionState,pc.iceConnectionState];
+    if(states.some(v=>v==='failed'||v==='closed')){stop(s,'Direct connection could not be established.');return;}
+    if(states.includes('disconnected')){
+      if(s.disconnectTimer==null)s.disconnectTimer=setTimeout(()=>{s.disconnectTimer=null;stop(s,'Direct connection could not be established.');},DISCONNECT_GRACE_MS);
+      return;
+    }
+    if(states.some(v=>v==='connected'||v==='completed')){
+      clearTimeout(s.disconnectTimer);s.disconnectTimer=null;clearTimeout(s.directTimer);
+      if(!s.streaming)pairingState(s,'connected');status(s.streaming?'Streaming':'Waiting for screen sharing...');
+    }
   };
+  pc.onconnectionstatechange=networkState;pc.oniceconnectionstatechange=networkState;
 }
 async function connect(intent='join') {
   scanner.stop();el('scanPanel').hidden=true;
@@ -118,6 +147,7 @@ async function connect(intent='join') {
     s={pc:new RTCPeerConnection(RTC_CONFIG),phase:intent==='create'?'creating':'joining',streaming:false,intent,attempts:1,registered:false,session,start:performance.now(),last:null,firstMedia:null,latest:{},peak:0,stopping:false,offered:false,pendingIce:[],chain:Promise.resolve(),statsPending:false,
       timing:{captureReceive:accumulator(),receiveDisplay:accumulator(),captureDisplay:accumulator()},rtt:accumulator(),timestamps:{}};
     active=s;
+    receiverView('PAIRING');el('play').hidden=true;
     bindPeer(s);
     status('Connecting');
     s.waitingTimer=setTimeout(()=>stop(s,'The phone is not available. Start a new share and try its new code.'),300000);
@@ -206,14 +236,15 @@ function stop(s,reason='Disconnected',recover=true) {
   // Invalidate first: cleanup must not depend on native getStats or SDP promises.
   // Summary retains the most recent one-second stats snapshot.
   active=null;
-  clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);clearTimeout(s.rotationTimer);
+  clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);clearTimeout(s.rotationTimer);clearTimeout(s.disconnectTimer);s.disconnectTimer=null;
   if(lastCompleted)el('previousSummary').value=lastCompleted;
   lastCompleted=summary(s);el('summary').value=lastCompleted;
   if(s.frameCallback!=null&&el('video').cancelVideoFrameCallback)el('video').cancelVideoFrameCallback(s.frameCallback);
-  if(s.pc){s.pc.onconnectionstatechange=null;s.pc.onicecandidate=null;s.pc.ontrack=null;s.pc.close();s.pc=null;}
+  if(s.pc){s.pc.onconnectionstatechange=null;s.pc.oniceconnectionstatechange=null;s.pc.onicecandidate=null;s.pc.ontrack=null;s.pc.close();s.pc=null;}
   if(s.ws){s.ws.onopen=null;s.ws.onmessage=null;s.ws.onerror=null;s.ws.onclose=null;s.ws.close(1000,'Session stopped');s.ws=null;}
   if(el('video').srcObject)el('video').srcObject.getTracks().forEach(t=>{t.onended=null;t.stop();});
-  el('video').srcObject=null;
+  el('video').onloadeddata=null;el('video').onplaying=null;el('video').pause();el('video').srcObject=null;el('video').load();
+  receiverView('PAIRING');el('play').hidden=true;
   s.pendingIce=[];s.offered=false;s.registered=false;s.streaming=false;s.statsPending=false;s.frameCallback=null;
   s.session='';s.intent=null;s.attempts=0;
   s.chain=Promise.resolve();
@@ -224,7 +255,10 @@ function stop(s,reason='Disconnected',recover=true) {
   if(recover&&onPairingEnded)onPairingEnded(reason);
 }
 el('disconnect').onclick=()=>{if(active)stop(active);};
-el('play').onclick=()=>el('video').play().catch(error=>status(error.message));
+el('play').onclick=()=>{
+  const s=active;
+  if(s)el('video').play().catch(()=>{if(active===s&&!s.stopping)status('Video could not start. Please try again.');});
+};
 window.addEventListener('pagehide',()=>{scanner.stop();el('scanPanel').hidden=true;if(active)stop(active,'Disconnected',false);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){scanner.stop();el('scanPanel').hidden=true;}});
 
@@ -232,7 +266,6 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){scanner.st
 const pairingLink=Pairing.query(window.location.search);
 if(pairingLink.code)el('session').value=pairingLink.code;
 if(pairingLink.error)status(pairingLink.error);
-el('video').onplaying=()=>{if(active&&!active.stopping){active.streaming=true;status('Streaming');}};
 function addressFamily(address){return typeof address!=='string'||!address?'N/A':address.includes(':')?'IPv6':/^\d+(\.\d+){3}$/.test(address)?'IPv4':'N/A / obfuscated';}
 
 const scanner=new QrTools.CameraScanner({video:el('scanVideo'),canvas:el('scanCanvas'),onPayload:payload=>{

@@ -7,3 +7,9 @@
 .receiver details>summary{cursor:pointer;padding:18px;font-weight:600;min-height:56px}.receiver details[open]>summary{margin-bottom:14px}.receiver details .panel{margin:0 0 16px}
 .receiver textarea{min-height:280px;font-size:14px}.receiver .status{min-height:48px;display:grid;place-content:center}
 @media(max-width:440px){.receiver-video{padding:10px}.receiver details>summary{padding:14px}}
+.connecting-panel{text-align:center;padding:32px 12px;min-height:0}
+.receiver[data-view="STREAMING"]{max-width:none}
+.receiver[data-view="STREAMING"] .receiver-header{display:none}
+.receiver[data-view="STREAMING"] .receiver-video{height:calc(100vh - 130px);height:calc(100dvh - 130px);padding:0;margin:0}
+.receiver[data-view="STREAMING"] #video{height:100%;width:100%;max-height:100%;min-height:0;object-fit:contain}
+.receiver[data-view="STREAMING"] #diagnostics>summary{padding:10px;min-height:36px}

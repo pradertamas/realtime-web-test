@@ -1,19 +1,21 @@
 ﻿<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="receiver-ui.css"><script defer src="vendor/qrcode-generator-2.0.4.js"></script><script defer src="vendor/jsqr-1.4.0.js"></script><script defer src="pairing.js"></script><script defer src="qr-tools.js"></script><script defer src="webrtc-receiver.js"></script><script defer src="auto-pairing.js"></script></head>
-<body><main class="receiver">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Screen Receiver</title><link rel="stylesheet" href="style.css?v=20261017-1"><link rel="stylesheet" href="receiver-ui.css?v=20261017-1"><script defer src="vendor/qrcode-generator-2.0.4.js"></script><script defer src="vendor/jsqr-1.4.0.js"></script><script defer src="pairing.js?v=20261017-1"></script><script defer src="qr-tools.js?v=20261017-1"></script><script defer src="webrtc-receiver.js?v=20261017-1"></script><script defer src="auto-pairing.js?v=20261017-1"></script></head>
+<body><main id="receiver" class="receiver" data-view="PAIRING">
 <header class="receiver-header"><h1>Screen Receiver</h1><p>Share your Android screen with this browser.</p></header>
-<section class="panel pairing-panel" aria-label="Pair your phone">
+<section id="pairingPanel" class="panel pairing-panel" aria-label="Pair your phone">
 
 <section id="createdPairing" hidden><h2>Pair with this screen</h2><p id="createdCode"></p><div id="createdQr"></div><p>Scan this QR with the Android app or enter the code there.</p></section>
 <h2>Join another device</h2>
 <label for="session">Pairing code</label><input id="session" maxlength="6" placeholder="______" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="pairingHelp">
-<div class="pairing-actions"><button id="disconnect" disabled hidden>Stop</button></div>
+
 <button id="scan">Scan QR code</button>
 <p id="status" class="status" role="status" aria-live="polite">Waiting</p>
 <p id="pairingHelp">Scan another device or enter its six-character code. Keep the code private.</p><p id="pairingError" role="alert"></p>
 <section id="scanPanel" hidden><video id="scanVideo" autoplay muted playsinline></video><canvas id="scanCanvas" hidden></canvas><button id="cancelScan">Cancel scan</button></section>
 </section>
-<section class="panel receiver-video" aria-label="Shared screen"><video id="video" autoplay playsinline muted controls aria-label="Live Android screen"></video><button id="play">Play video</button></section>
+<section id="connectingPanel" class="connecting-panel" aria-label="Connecting" aria-live="polite" hidden aria-hidden="true"><p>Waiting for screen sharing...</p></section>
+<section id="videoPanel" class="receiver-video" aria-label="Shared screen" hidden aria-hidden="true"><video id="video" autoplay playsinline muted controls aria-label="Live Android screen"></video></section>
+<div class="pairing-actions"><button id="play" hidden>Play video</button><button id="disconnect" disabled hidden>Stop</button></div>
 <details id="diagnostics"><summary>Advanced diagnostics</summary>
 <p class="note">Direct WebRTC connection, STUN discovery, no TURN fallback. The video never travels over the signaling WebSocket.</p>
 <div class="grid"><section class="panel"><h2>Connection</h2><dl id="connection" class="metrics"></dl></section>
