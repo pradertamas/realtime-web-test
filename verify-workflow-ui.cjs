@@ -1,0 +1,28 @@
+﻿'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {env}=require('./verify-webrtc.cjs');
+function page(search=''){
+ const e=env(true,search);e.run(fs.readFileSync('auto-pairing.js','utf8'));return e;
+}
+const e=page();let stops=0,starts=0;
+e.run('(stop,start)=>{scanner.stop=stop;scanner.start=start;}')(()=>stops++,()=>starts++);
+e.nodes.get('scan').onclick();
+assert.equal(e.nodes.get('scanPanel').hidden,false);assert.equal(starts,1);
+assert.equal(e.nodes.get('workflowHome').hidden,true);assert.equal(e.nodes.get('diagnostics').hidden,true);
+e.run("scanner.onError('Camera permission denied. Enter the pairing code instead.')");
+assert.match(e.nodes.get('scanError').textContent,/permission denied/);
+e.nodes.get('scanEnter').onclick();assert.equal(e.nodes.get('scanPanel').hidden,true);assert.equal(e.nodes.get('codePanel').hidden,false);assert.ok(stops>=2);
+e.nodes.get('closeCode').onclick();assert.equal(e.nodes.get('workflowHome').hidden,false);
+e.nodes.get('showCode').onclick();assert.equal(e.nodes.get('showPanel').hidden,false);
+assert.equal(e.nodes.get('codePanel').hidden,true);assert.equal(e.nodes.get('createdPairing').hidden,false);
+e.nodes.get('closeShow').onclick();e.nodes.get('enterCode').onclick();
+e.nodes.get('session').value='bad';e.nodes.get('codeConnect').onclick();assert.match(e.nodes.get('codeError').textContent,/Invalid/);
+e.nodes.get('session').value='7K4M2Q';e.nodes.get('codeConnect').onclick();assert.equal(e.run('active.intent'),'join');assert.equal(e.nodes.get('codePanel').hidden,true);
+e.fire('pagehide');assert.equal(e.nodes.get('scanPanel').hidden,true);
+const scan=page();scan.nodes.get('scan').onclick();scan.run("scanner.onPayload('7K4M2Q')");assert.equal(scan.nodes.get('scanPanel').hidden,true);assert.equal(scan.run('active.intent'),'join');scan.fire('pagehide');
+const mobile=page('?mode=mobile');mobile.nodes.get('scan').onclick();assert.equal(mobile.WS.instances.length,0);assert.notEqual(mobile.nodes.get('receiver').dataset.panel,'scanPanel');mobile.fire('pagehide');
+const html=fs.readFileSync('webrtc-receiver.html','utf8'),css=fs.readFileSync('receiver-ui.css','utf8');
+assert.match(html,/<button disabled[^>]*>SEND/);assert.match(html,/id="pairedDevices" hidden/);assert.match(html,/id="diagnostics"><summary>Advanced diagnostics/);
+for(const id of ['scanPanel','codePanel','showPanel'])assert.match(html,new RegExp('id="'+id+'"[^>]*role="dialog"[^>]*hidden'));
+assert.match(css,/\.workflow-panel\{position:fixed;top:0;right:0;bottom:0;left:0/);assert.match(css,/100dvh/);assert.match(css,/object-fit:contain/);
+console.log('PASS workflow panels: desktop CREATE preserved, fixed scanner, errors/fallback/cleanup, enter-code validation/JOIN, show QR, hidden home, mobile gate preserved.');

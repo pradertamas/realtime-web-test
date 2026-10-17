@@ -23,6 +23,7 @@ function timingValues(a) {return `current ${fmt(a.current,' ms')} / avg ${fmt(a.
 let active=null, lastCompleted=null, onPairingEnded=null, onPairingState=null;
 function pairingState(s,phase){s.phase=phase;if(onPairingState)onPairingState(s,phase);}
 function receiverView(view) {
+  if(view!=='PAIRING'&&typeof closeWorkflow==='function')closeWorkflow();
   for(const [id,visible] of [['pairingPanel',view==='PAIRING'],['connectingPanel',view==='CONNECTING'],['videoPanel',view==='STREAMING'],['mobileConfirm',view==='MOBILE_CONFIRM'],['mobileEnded',view==='MOBILE_ENDED']]){
     const node=el(id);node.hidden=!visible;node.setAttribute('aria-hidden',String(!visible));
   }

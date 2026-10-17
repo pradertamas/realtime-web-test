@@ -138,3 +138,27 @@ before any pairing/resolve, requests fullscreen directly from the acceptance cli
 and falls back to full viewport when unavailable. Default desktop links keep their
 automatic behavior. See [MOBILE_RECEIVER.md](MOBILE_RECEIVER.md) for API, lifecycle,
 privacy and the physical test matrix. Run `node verify-mobile-receiver.cjs` too.
+
+## Receiver connection workflows
+
+The home screen is receive-only: SEND is disabled (use the Android app). Paired
+ devices are hidden until real supported device data exists; no browser identity,
+new API or fake list is provided. Scan QR, Enter code and Show QR/code open separate
+fixed viewport dialogs within the receiver fullscreen root. Back/Escape closes the
+panel; focus returns to its launcher. The camera stops on close, success, error,
+page hide and visibility loss. The scanner offers a code-entry fallback.
+
+The existing auto-CREATE, six-character alphanumeric format, 250 ms auto-JOIN,
+rotation, remote links and mobile confirmation gate are retained. Enter code also
+provides an explicit Connect action using the same existing JOIN entry point.
+Own QR/code are generated as before but only displayed in the Show QR/code panel.
+No copy/share control was added because the browser did not previously offer one.
+Diagnostics remain collapsed by default. Cache release: receiver-release.json;
+run node update-receiver-release.cjs after incrementing it.
+
+Run node verify-workflow-ui.cjs alongside all existing verify scripts. Physical QA:
+check a small phone and Samsung SM-T585 in portrait/landscape, opening Scan QR from
+a scrolled page; camera must be immediately visible. Check Back, permission denied,
+Enter code instead, scan success, code paste/manual Connect, Show QR/code and
+rotation. Repeat under ?mode=mobile (confirmation/fullscreen denial fallback) and
+normal desktop; approve Android sharing, receive video, Stop and retry without reload.
