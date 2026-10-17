@@ -32,8 +32,6 @@
 
 /* Connection workflows remain inside the fullscreen receiver root. */
 .receiver-header{padding:10px 0}.receiver-header h1{margin:8px}.role-switch,.workflow-actions{display:flex;justify-content:center;gap:10px}.role-switch button{flex:1;max-width:230px}.role-switch small{display:block;font-size:.7rem}.role-switch [aria-pressed="true"]{border-color:#7df2b0;background:#23624b}.pairing-panel h2{font-size:1.1rem;margin:16px 0 10px}.pairing-panel{padding:12px}.receiver[data-mobile="true"]:not([data-view="STREAMING"]) .receiver-header{display:block}.receiver[data-view="MOBILE_CONFIRM"] .receiver-header,.receiver[data-view="MOBILE_ENDED"] .receiver-header{display:none!important}
-.workflow-panel{position:fixed;top:0;right:0;bottom:0;left:0;z-index:20;box-sizing:border-box;height:100vh;height:100dvh;overflow:auto;background:#0b111b;color:#eef5ff;padding:16px;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));text-align:center}.workflow-panel>button:first-child{display:block}.workflow-panel #session{max-width:420px;margin:20px auto}.workflow-panel #createdQr canvas{max-height:50vh;width:auto;max-width:100%}.camera-stage{position:relative;width:100%;max-width:700px;height:48vh;margin:auto;background:#000}.camera-stage #scanVideo{width:100%;height:100%;max-height:none;object-fit:contain}.qr-target{position:absolute;top:50%;left:50%;width:160px;height:160px;max-width:60%;max-height:80%;border:3px solid #7df2b0;transform:translate(-50%,-50%);pointer-events:none}.workflow-panel h2{margin:12px}.workflow-panel p{margin:12px}body.workflow-open{overflow:hidden}
-
 /* Numbered home workflow: shared geometry, restrained emphasis. */
 .receiver-header,.pairing-panel,#diagnostics{width:100%;max-width:880px;margin-left:auto;margin-right:auto}
 .receiver-header{text-align:left;padding:8px 0 16px}.receiver-header h1{margin:0;font-size:1.75rem}
@@ -53,3 +51,14 @@
 #diagnostics>summary{font-size:.9rem;color:#a7b9ce;font-weight:500;padding:12px 0}
 @media(max-width:600px){.start-options{grid-template-columns:minmax(0,1fr)}.workflow-step{padding:14px;margin-bottom:12px}.workflow-step .action-card{min-height:100px}.receiver-header{padding-bottom:12px}}
 @media(max-width:360px){.workflow-actions{grid-template-columns:minmax(0,1fr)}}
+
+/* The chosen path is an integrated panel, never a scanner/code dialog. */
+.connection-panel{margin:14px 0;padding:18px;border:1px solid #293a50;border-radius:10px;background:#101b2a;text-align:center;scroll-margin-top:12px}
+.connection-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;text-align:left}.connection-heading h2{margin:0;font-size:1.05rem}.connection-heading button{flex:0 0 auto;background:transparent;border-color:#415671;font-size:.875rem;min-height:44px}
+.camera-stage{position:relative;width:100%;max-width:600px;height:28vh;min-height:120px;max-height:240px;margin:auto;background:#000;border-radius:8px;overflow:hidden}.camera-stage #scanVideo{display:block;width:100%;height:100%;max-height:none;object-fit:contain}.qr-target{position:absolute;top:50%;left:50%;width:120px;height:120px;max-width:60%;max-height:80%;border:3px solid #7df2b0;transform:translate(-50%,-50%);pointer-events:none}
+.camera-instruction,.connection-panel .note{font-size:.85rem;color:#b9cbe0;margin:8px 0}.or-divider{display:flex;align-items:center;gap:12px;margin:14px 0;color:#9eb2ca;font-size:.8rem}.or-divider:before,.or-divider:after{content:'';height:1px;flex:1;background:#354760}
+.connection-entry{max-width:480px;margin:auto;text-align:left}.connection-entry #session{width:100%;min-height:52px;padding:10px 12px;margin:8px 0;font-size:1.6rem}.connection-entry #codeConnect{width:100%;min-height:48px}
+.connection-messages{padding-top:12px;margin-top:14px;border-top:1px solid #293a50;font-size:.9rem}.receiver .connection-messages .status{background:transparent;font-weight:500;min-height:0;padding:0;margin:0}.connection-messages p:empty,#scanError:empty,#codeError:empty,#shareFeedback:empty{display:none}#scanError,#codeError,#pairingError{color:#ffb7b7}
+#showPanel #createdQr canvas{width:240px;max-width:100%;height:auto;margin:0 auto}#showPanel #createdCode{margin:8px 0 16px}.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:360px;margin:auto}.share-actions button{width:100%}
+@media(max-width:600px){.connection-panel{padding:14px}.connection-heading{align-items:flex-start}.camera-stage{height:25vh;min-height:110px}.connection-panel .connection-heading h2{font-size:1rem}}
+@media(max-height:500px) and (orientation:landscape){.camera-stage{height:130px;min-height:100px}}

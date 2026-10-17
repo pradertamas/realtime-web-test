@@ -119,55 +119,46 @@ el('remoteRetry').onclick=()=>mobilePresentation.retry(resolveRemote);
 mobilePresentation.startup();
 // URL routes are exclusive; only manual six-character input needs a debounce.
 
-// Presentation-only panels: existing auto-CREATE/JOIN and camera decoder stay shared.
-var workflowOrigin=null;
+// Presentation only: reuse the existing scanner, code input and CREATE registration.
 function closeWorkflow(){
   clearPairingInput();scanner.stop();
-  for(const id of ['scanPanel','codePanel','showPanel']){el(id).hidden=true;el(id).setAttribute('aria-hidden','true');}
+  for(const id of ['scanPanel','showPanel']){el(id).hidden=true;el(id).setAttribute('aria-hidden','true');}
   el('receiver').dataset.panel='';
-  el('workflowHome').hidden=false;el('diagnostics').hidden=false;
-  document.body?.classList.remove('workflow-open');
-  const origin=workflowOrigin;workflowOrigin=null;origin?.focus?.();
+  for(const id of ['status','pairingError'])el('messageParking').appendChild?.(el(id));
+  el('scan').setAttribute('aria-pressed','false');el('chooseShare').setAttribute('aria-pressed','false');
 }
-function openWorkflow(id,origin){
-  closeWorkflow();workflowOrigin=origin;
-  el('workflowHome').hidden=true;el('diagnostics').hidden=true;
-  el(id).hidden=false;el(id).setAttribute('aria-hidden','false');el('receiver').dataset.panel=id;
-  document.body?.classList.add('workflow-open');
-  (id==='codePanel'?el('session'):el(id==='scanPanel'?'cancelScan':'closeShow')).focus?.();
+function selectStartPath(path){
+  if(!editablePairing())return;
+  closeWorkflow();
+  if(!path)return;
+  const panel=path==='connect'?'scanPanel':'showPanel';
+  el(panel).hidden=false;el(panel).setAttribute('aria-hidden','false');el('receiver').dataset.panel=panel;
+  el(path==='connect'?'scan':'chooseShare').setAttribute('aria-pressed','true');
+  for(const id of ['status','pairingError'])el(path==='connect'?'connectMessages':'shareMessages').appendChild?.(el(id));
+  if(path==='connect'){el('scanError').textContent='';scanner.start();}
+  el(path==='connect'?'cancelScan':'closeShow').focus?.();
+  el(panel).scrollIntoView?.({block:'start'});
 }
-const workflowScan=el('scan').onclick;
-el('scan').onclick=()=>{if(!editablePairing())return;openWorkflow('scanPanel',el('scan'));el('scanError').textContent='';workflowScan();};
-el('enterCode').onclick=()=>{if(editablePairing())openWorkflow('codePanel',el('enterCode'));};
-el('showCode').onclick=()=>{if(editablePairing())openWorkflow('showPanel',el('showCode'));};
-for(const id of ['cancelScan','closeCode','closeShow'])el(id).onclick=closeWorkflow;
-el('scanEnter').onclick=()=>openWorkflow('codePanel',el('enterCode'));
-el('codeScan').onclick=()=>el('scan').onclick();
+el('scan').onclick=()=>selectStartPath('connect');
+el('chooseShare').onclick=()=>selectStartPath('share');
+for(const id of ['cancelScan','closeShow'])el(id).onclick=()=>{closeWorkflow();el('scan').focus?.();};
 el('codeConnect').onclick=()=>{const code=Pairing.normalize(el('session').value);if(code)joinAutomatically(code);else el('codeError').textContent='Invalid pairing code';};
-const workflowPayload=scanner.onPayload;
-scanner.onPayload=payload=>{closeWorkflow();workflowPayload(payload);};
+scanner.onPayload=payload=>{
+  scanner.stop();const code=Pairing.parseQr(payload);
+  if(code)joinAutomatically(code);else{el('scanError').textContent='QR code is not a valid pairing code.';el('scanPanel').hidden=false;}
+};
 scanner.onError=message=>{scanner.stop();el('scanError').textContent=message;};
-document.addEventListener('keydown',event=>{
-  if(!el('receiver').dataset.panel)return;
-  if(event.key==='Escape'){event.preventDefault();closeWorkflow();return;}
-  if(event.key==='Tab'){
-    const panel=el(el('receiver').dataset.panel),items=panel.querySelectorAll?.('button:not([disabled]),input:not([disabled])');
-    if(!items?.length)return;
-    const first=items[0],last=items[items.length-1];
-    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
-    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
-  }
-});
+function currentShareCode(){return active?.intent==='create'&&active.phase==='waiting'?Pairing.normalize(el('createdCode').textContent):null;}
+el('copyCode').onclick=async()=>{
+  const code=currentShareCode();if(!code)return;
+  try{await navigator.clipboard.writeText(code);el('shareFeedback').textContent='Code copied.';}
+  catch{el('shareFeedback').textContent='Copy is unavailable. Select the code to copy it.';}
+};
+el('shareCode').hidden=typeof globalThis.navigator?.share!=='function';
+el('shareCode').onclick=async()=>{
+  const code=currentShareCode();if(!code)return;
+  try{await navigator.share({title:'Screen Share',text:code});}
+  catch(error){if(error.name!=='AbortError')el('shareFeedback').textContent='Sharing is unavailable. Copy the code instead.';}
+};
 window.addEventListener('pagehide',closeWorkflow);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)closeWorkflow();});
-
-// Local presentation selection only; choosing a path does not create/join anything.
-function selectStartPath(path){
-  for(const [name,button,panel] of [['connect','chooseConnect','connectActions'],['share','chooseShare','shareActions']]){
-    const selected=path===name;
-    el(button).setAttribute('aria-pressed',String(selected));el(panel).hidden=!selected;
-  }
-}
-el('chooseConnect').onclick=()=>selectStartPath('connect');
-el('chooseShare').onclick=()=>selectStartPath('share');
-selectStartPath(null);
