@@ -1,5 +1,5 @@
 .receiver{max-width:1100px;margin:auto}.receiver-header{text-align:center;padding:16px 0}.receiver-header p{color:#b9cbe0}
-#createdCode{font:700 3rem ui-monospace,monospace;letter-spacing:.12em}#createdQr canvas{width:min(100%,260px);height:auto;margin:0 auto;background:#fff;border-radius:0}#scanVideo{width:100%;max-height:50vh}#scan{margin-top:16px}.pairing-panel h2{margin-top:24px}[hidden]{display:none!important}
+#createdCode{font:700 3rem ui-monospace,monospace;letter-spacing:.12em}#createdQr canvas{width:min(100%,260px);height:auto;margin:0 auto;background:#fff;border-radius:0}#scanVideo{width:100%;max-height:50vh}.pairing-panel h2{margin-top:24px}[hidden]{display:none!important}
 .pairing-panel{max-width:580px;margin:0 auto 20px;text-align:center}.pairing-panel label{display:block;text-align:left;font-weight:600}
 #session{display:block;width:100%;margin:12px 0 16px;text-align:center;letter-spacing:.22em;text-transform:uppercase;font:700 clamp(1.8rem,6vw,2.5rem) ui-monospace,monospace;padding:18px 12px;min-height:76px}
 .pairing-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}#connect{background:#23624b;border-color:#7df2b0;font-weight:650;min-width:140px}

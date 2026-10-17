@@ -30,7 +30,7 @@ const mobile=page('?mode=mobile');mobile.nodes.get('scan').onclick();assert.equa
 const html=fs.readFileSync('webrtc-receiver.html','utf8'),css=fs.readFileSync('receiver-ui.css','utf8');
 assert.match(html,/<button disabled[^>]*>SEND/);assert.match(html,/aria-pressed="true">RECEIVE/);assert.match(html,/id="pairedDevices" hidden/);
 assert.equal((html.match(/class="action-card"/g)||[]).length,2);
-for(const obsolete of ['4. Status','3. Connect','connectActions','shareActions','Show QR / code','id="codePanel"','id="enterCode"'])assert.ok(!html.includes(obsolete),obsolete);
+for(const obsolete of ['4. Status','>3. Connect</h2>','connectActions','shareActions','Show QR / code','id="codePanel"','id="enterCode"'])assert.ok(!html.includes(obsolete),obsolete);
 const connect=html.slice(html.indexOf('<section id="scanPanel"'),html.indexOf('<section id="showPanel"'));
 for(const id of ['scanVideo','scanCanvas','session','codeConnect','connectMessages','scanError','cancelScan'])assert.ok(connect.includes('id="'+id+'"'),id);
 assert.match(connect,/OR/);assert.ok(!connect.includes('role="dialog"'));
@@ -55,3 +55,10 @@ assert.ok(fs.readFileSync('webrtc-receiver.js','utf8').includes('Waiting for ano
  assert.deepEqual(copied,['7K4M2Q']);assert.equal(shared.length,1);assert.equal(shared[0].title,'Screen Share');assert.equal(shared[0].text,'7K4M2Q');
  copy.fire('pagehide');console.log('PASS connection terminology and unchanged Copy/Share payloads.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+assert.ok(html.includes('id="scanTitle">3. Connect to another device</h2>'));
+assert.ok(html.includes('id="showTitle">3. Let another device connect here</h2>'));
+assert.match(css,/\.role-switch,\.start-options,\.workflow-actions\{[^}]*display:grid;[^}]*align-items:stretch/);
+assert.ok(!/#scan\{margin-top:16px\}/.test(css),'No legacy scanner margin offset on the action card');
+const cards=[...html.matchAll(/<button[^>]*class="action-card"[^>]*><strong>[^<]+<\/strong><span>[^<]+<\/span><\/button>/g)];
+assert.equal(cards.length,2,'Both action cards share the same title/helper structure');
