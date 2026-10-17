@@ -1,5 +1,9 @@
 # Consent Cancel -> cleanup -> fresh pairing (no page reload)
 
+Historical audit of the manual pairing release. The current automatic UX and
+pre-consent registration supersede its timing/buttons: see AUTO_PAIRING.md.
+Cleanup identity guards and regression verifies remain active.
+
 ## Root cause audit
 
 Android MainActivity requests consent before starting WebRtcService. Only

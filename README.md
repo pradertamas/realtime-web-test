@@ -1,11 +1,13 @@
 ﻿# Screen Receiver - P2P pairing release
 
-The normal receiver is webrtc-receiver.html. Both phone and browser offer Create
-pairing, Scan QR code and Enter pairing code. Either can create; Android always
-sends the screen and makes the offer, browser always receives and answers.
-The joining phone requests fresh screen-capture consent after code validation.
-A QR URL opened normally prefills ?session=<CODE> and waits for Connect; an
-explicit successful in-page Scan validates the payload and joins immediately.
+The normal receiver is webrtc-receiver.html. Both phone and browser automatically
+create a private waiting pairing and display their own QR/code when opened.
+There are no Create/Connect/Continue buttons. Scan the other device or enter its
+code to replace your waiting pairing and join. Android always sends and offers;
+browser always receives and answers. Only actual peer presence triggers fresh
+Android screen-capture consent, never merely opening the app.
+A valid ?session=<CODE> link now joins through the same 250 ms debounce as code
+entry, because there is no Connect button. Invalid links do not join.
 Input is trimmed, uppercased and validated against
 23456789ABCDEFGHJKLMNPQRSTUVWXYZ. No long session ID, account or receiver app.
 
@@ -20,6 +22,7 @@ Direct connection could not be established.
 
 - webrtc-receiver.html: pairing input, video and collapsible diagnostics.
 - webrtc-receiver.js: direct signaling/media, stats, timing and summaries.
+- auto-pairing.js: startup, 250 ms code debounce, recovery and waiting rotation.
 - pairing.js: short-code validation and query parsing; no persistence.
 - qr-tools.js and vendor/: local QR scanning/generation, pinned source and licenses.
 - receiver-ui.css and style.css: local styles.
@@ -57,6 +60,7 @@ node verify-webrtc.cjs
 node verify-pairing.cjs
 node verify-qr-pairing.cjs
 node verify-cancel-retry.cjs
+node verify-auto-pairing.cjs
 node --check pairing.js
 node --check webrtc-receiver.js
 ```
@@ -73,11 +77,12 @@ Physical stability still requires device/browser runs. Full four-flow matrix:
 sibling ui-capture-test/SYMMETRIC_PAIRING.md. Release the intent-aware relay and
 both updated clients together; no deployment was performed here.
 
-Cancel/retry lifecycle audit and no-reload physical retest:
+Historical Cancel/retry lifecycle audit:
 [CANCEL_RETRY.md](CANCEL_RETRY.md). A fresh Create pairing or Connect closes the
 previous attempt; Disconnect also resets it. Android consent cancellation before
 registration leaves a browser-created pairing waiting, so it can be replaced
-without reloading. Stop retains the latest periodic stats snapshot rather than
+without reloading. The current automatic UX supersedes the manual buttons in
+that audit; see [AUTO_PAIRING.md](AUTO_PAIRING.md). Stop retains the latest periodic stats snapshot rather than
 waiting for a possibly stalled native getStats call.
 
 The historical PoC 4B TURN sources/tests/docs are preserved exclusively under

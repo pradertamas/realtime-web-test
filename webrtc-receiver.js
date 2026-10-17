@@ -19,7 +19,8 @@ function observe(a,value) {
   a.current=value; a.sum+=value; a.count++; a.max=Math.max(a.max??0,value);
 }
 function timingValues(a) {return `current ${fmt(a.current,' ms')} / avg ${fmt(a.count?a.sum/a.count:null,' ms')} / max ${fmt(a.max,' ms')}`;}
-let active=null, lastCompleted=null;
+let active=null, lastCompleted=null, onPairingEnded=null, onPairingState=null;
+function pairingState(s,phase){s.phase=phase;if(onPairingState)onPairingState(s,phase);}
 function status(text) {el('status').textContent=text;}
 function send(s,m) {
   if(active!==s || s.stopping || s.ws?.readyState!==WebSocket.OPEN) return;
@@ -46,16 +47,17 @@ async function signal(s,m) {
     clearTimeout(s.registrationTimer);
     if(m.status==='ok'){
       s.registered=true;
-      el('session').value=s.session;
+      if(s.intent==='create')clearTimeout(s.waitingTimer);
+      pairingState(s,'waiting');
       status(s.intent==='create'?'Waiting for phone...':'Phone connected. Starting stream');
       if(s.intent==='create'){el('createdPairing').hidden=false;el('createdCode').textContent=s.session;QrTools.render(el('createdQr'),Pairing.receiverUrl(s.session));}
     }else if(m.status==='conflict' && s.intent==='create' && s.attempts<4){
       s.attempts++;s.session=Pairing.generate();const previous=s.ws;s.ws=null;previous.close();openSignaling(s);
-    }else await stop(s,m.status==='not-found'?'Pairing code not found or expired.':'Pairing code already in use.');
+    }else await stop(s,m.status==='not-found'?'Pairing code not found or expired.':m.status==='rate-limited'?'Too many attempts. Please wait and try again.':'Pairing code already in use.');
     return;
   }
   if(['peer-present','offer','ice'].includes(m.type)&&!s.registered)throw Error('Pairing registration has not succeeded.');
-  if(m.type==='peer-present'){status('Phone connected. Starting stream');return;}
+  if(m.type==='peer-present'){clearTimeout(s.rotationTimer);pairingState(s,'connecting');status('Waiting for the phone to allow sharing...');return;}
   if(m.type==='peer-left'){await stop(s,'Disconnected');return;}
   if(m.type==='ready') {send(s,{type:'ready'});return;}
   if(m.type==='bye') {await stop(s,'Android stopped');return;}
@@ -64,6 +66,7 @@ async function signal(s,m) {
     if(s.offered) return;
     if(typeof m.sdp!=='string') throw Error('Invalid offer');
     s.offered=true;
+    pairingState(s,'connecting');
     clearTimeout(s.waitingTimer);
     s.directTimer=setTimeout(()=>stop(s,"Direct connection could not be established."),45000);
     status("Starting stream");
@@ -97,7 +100,7 @@ function bindPeer(s) {
   };
   pc.onconnectionstatechange=()=>{
     if(active!==s || s.stopping) return;
-    if(pc.connectionState==='connected'){clearTimeout(s.directTimer);status(s.streaming?'Streaming':'Connected');}
+    if(pc.connectionState==='connected'){clearTimeout(s.directTimer);pairingState(s,'connected');status(s.streaming?'Streaming':'Connected');}
     if(pc.connectionState==='disconnected'){status('Disconnected');clearTimeout(s.directTimer);s.directTimer=setTimeout(()=>stop(s,'Direct connection could not be established.'),15000);}
     if(pc.connectionState==='failed') stop(s,'Direct connection could not be established.');
   };
@@ -109,19 +112,21 @@ async function connect(intent='join') {
   if(!session){status('Invalid pairing code. Enter the 6-character code shown on your phone.');return;}
   // A fresh attempt always retires the previous registration/peer, even if the
   // phone cancelled consent before ever registering (no peer-left can arrive).
-  if(active) stop(active);
-  el('session').value=session;
+  if(active) stop(active,'',false);
   let s;
   try {
-    s={pc:new RTCPeerConnection(RTC_CONFIG),streaming:false,intent,attempts:1,registered:false,session,start:performance.now(),last:null,firstMedia:null,latest:{},peak:0,stopping:false,offered:false,pendingIce:[],chain:Promise.resolve(),statsPending:false,
+    s={pc:new RTCPeerConnection(RTC_CONFIG),phase:intent==='create'?'creating':'joining',streaming:false,intent,attempts:1,registered:false,session,start:performance.now(),last:null,firstMedia:null,latest:{},peak:0,stopping:false,offered:false,pendingIce:[],chain:Promise.resolve(),statsPending:false,
       timing:{captureReceive:accumulator(),receiveDisplay:accumulator(),captureDisplay:accumulator()},rtt:accumulator(),timestamps:{}};
     active=s;
     bindPeer(s);
     status('Connecting');
     s.waitingTimer=setTimeout(()=>stop(s,'The phone is not available. Start a new share and try its new code.'),300000);
     el('summary').value='Session running; disconnect to retain summary.';
-    el('createdPairing').hidden=true;el('scan').disabled=true;
-    el('create').disabled=false;el('session').disabled=false;el('connect').disabled=false;el('disconnect').disabled=false;
+    el('createdPairing').hidden=true;el('scan').disabled=intent!=='create';
+    for(const id of ['create','connect'])if(el(id))el(id).disabled=false;
+    el('session').disabled=intent!=='create';el('disconnect').disabled=false;
+    pairingState(s,s.phase);
+    if(intent==='create'){el('createdPairing').hidden=false;el('createdCode').textContent=session;QrTools.render(el('createdQr'),Pairing.receiverUrl(session));}
     for(const id of ['connection','videoMetrics','bandwidth','latency']) list(id,{'Status':'Waiting for media'});
     openSignaling(s);
     s.statsTimer=setInterval(()=>sample(s).catch(()=>{}),1000);
@@ -194,14 +199,14 @@ function summary(s) {
     'Estimated capture → receive':timingValues(s.timing.captureReceive),'Estimated receive → expected display':timingValues(s.timing.receiveDisplay),
     'Estimated capture → expected display':timingValues(s.timing.captureDisplay)}).map(([k,v])=>k+': '+v).join('\n');
 }
-function stop(s,reason='Disconnected') {
+function stop(s,reason='Disconnected',recover=true) {
   if(!s||active!==s||s.stopping)return;
   try{send(s,{type:'bye'});}catch(_){}
   s.stopping=true;
   // Invalidate first: cleanup must not depend on native getStats or SDP promises.
   // Summary retains the most recent one-second stats snapshot.
   active=null;
-  clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);
+  clearInterval(s.readyTimer);clearInterval(s.statsTimer);clearTimeout(s.directTimer);clearTimeout(s.waitingTimer);clearTimeout(s.registrationTimer);clearTimeout(s.rotationTimer);
   if(lastCompleted)el('previousSummary').value=lastCompleted;
   lastCompleted=summary(s);el('summary').value=lastCompleted;
   if(s.frameCallback!=null&&el('video').cancelVideoFrameCallback)el('video').cancelVideoFrameCallback(s.frameCallback);
@@ -213,14 +218,14 @@ function stop(s,reason='Disconnected') {
   s.session='';s.intent=null;s.attempts=0;
   s.chain=Promise.resolve();
   for(const id of ['connection','videoMetrics','bandwidth','latency'])list(id,{'Status':'No active session'});
-  el('create').disabled=false;el('scan').disabled=false;el('createdPairing').hidden=true;el('createdCode').textContent='';el('createdQr').replaceChildren();
-  el('session').disabled=false;el('connect').disabled=false;el('disconnect').disabled=true;status(reason);
+  for(const id of ['create','connect'])if(el(id))el(id).disabled=false;
+  el('scan').disabled=false;el('createdPairing').hidden=true;el('createdCode').textContent='';el('createdQr').replaceChildren();
+  el('session').disabled=false;el('disconnect').disabled=true;status(reason);
+  if(recover&&onPairingEnded)onPairingEnded(reason);
 }
-el('connect').onclick=()=>connect('join');
-el('create').onclick=()=>connect('create');
 el('disconnect').onclick=()=>{if(active)stop(active);};
 el('play').onclick=()=>el('video').play().catch(error=>status(error.message));
-window.addEventListener('pagehide',()=>{scanner.stop();el('scanPanel').hidden=true;if(active)stop(active,'Disconnected');});
+window.addEventListener('pagehide',()=>{scanner.stop();el('scanPanel').hidden=true;if(active)stop(active,'Disconnected',false);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){scanner.stop();el('scanPanel').hidden=true;}});
 
 // QR links prefill only. No automatic connection or persistent code storage.
@@ -235,5 +240,5 @@ const scanner=new QrTools.CameraScanner({video:el('scanVideo'),canvas:el('scanCa
   if(!code){status('QR code is not a valid pairing code.');return;}
   el('session').value=code;connect('join');
 },onError:message=>{el('scanPanel').hidden=true;status(message);}});
-el('scan').onclick=()=>{if(active)return;el('scanPanel').hidden=false;scanner.start();};
+el('scan').onclick=()=>{if(active&&!['creating','waiting'].includes(active.phase))return;el('scanPanel').hidden=false;scanner.start();};
 el('cancelScan').onclick=()=>{scanner.stop();el('scanPanel').hidden=true;status('Scan cancelled');};

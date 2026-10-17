@@ -1,17 +1,19 @@
 'use strict';
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 function env(frameSupport=true,search='',receiverSource=fs.readFileSync('webrtc-receiver.js','utf8')){
- let now=0,id=0;const nodes=new Map(),timers=new Map();
+ let now=0,id=0;const nodes=new Map(),timers=new Map(),events=new Map();
  const node=()=>({value:' 7k4m2q ',disabled:false,textContent:'',srcObject:null,children:[],play:()=>Promise.resolve(),replaceChildren(...v){this.children=v;}});
  const document={getElementById(k){if(!nodes.has(k))nodes.set(k,node());return nodes.get(k);},createElement:node,addEventListener(){}};
  document.getElementById('session');
  if(frameSupport){document.getElementById('video').requestVideoFrameCallback=f=>{document.getElementById('video').callback=f;return ++id;};document.getElementById('video').cancelVideoFrameCallback=()=>{};}
  class WS{static OPEN=1;static instances=[];constructor(url){this.url=url;this.readyState=0;this.sent=[];WS.instances.push(this);}send(s){this.sent.push(JSON.parse(s));}close(){this.readyState=3;}open(){this.readyState=1;this.onopen();}message(m){if(m.type==='session-config'){this.mode=m.mode;this.configId=m.configId;}if(['offer','ice'].includes(m.type)){m={configId:this.configId,mode:this.mode,...m};}this.onmessage({data:JSON.stringify(m)});}}
  class PC{static instances=[];constructor(config){this.config=config;this.connectionState='new';this.iceConnectionState='new';this.signalingState='stable';this.ice=[];this.report=new Map();PC.instances.push(this);}async setRemoteDescription(d){await Promise.resolve();this.remoteDescription=d;}async addIceCandidate(c){assert.ok(this.remoteDescription);this.ice.push(c);}async createAnswer(){return{type:'answer',sdp:'answer-sdp'};}async setLocalDescription(d){this.localDescription=d;}async getStats(){return this.report;}close(){this.closed=true;}}
- const context=vm.createContext({console,document,window:{location:{search},addEventListener(){}},performance:{now:()=>now},RTCPeerConnection:PC,WebSocket:WS,TextEncoder,URLSearchParams,URL,crypto:require("node:crypto").webcrypto,QrTools:{render(){},CameraScanner:class{stop(){}start(){}}},MediaStream:class{constructor(t){this.t=t;}getTracks(){return this.t;}},setInterval(f,ms){timers.set(++id,{f,ms});return id;},clearInterval(i){timers.delete(i);},setTimeout(f,ms){timers.set(++id,{f,ms});return id;},clearTimeout(i){timers.delete(i);}});
+ const context=vm.createContext({console,document,window:{location:{search},addEventListener(name,f){if(!events.has(name))events.set(name,[]);events.get(name).push(f);}},performance:{now:()=>now},RTCPeerConnection:PC,WebSocket:WS,TextEncoder,URLSearchParams,URL,crypto:require("node:crypto").webcrypto,QrTools:{render(){},CameraScanner:class{stop(){}start(){}}},MediaStream:class{constructor(t){this.t=t;}getTracks(){return this.t;}},setInterval(f,ms){timers.set(++id,{f,ms,due:now+ms,repeat:true});return id;},clearInterval(i){timers.delete(i);},setTimeout(f,ms){timers.set(++id,{f,ms,due:now+ms});return id;},clearTimeout(i){timers.delete(i);}});
  vm.runInContext(fs.readFileSync('pairing.js','utf8'),context);
  vm.runInContext(receiverSource,context);
- return{run:s=>vm.runInContext(s,context),nodes,WS,PC,timers,time:n=>now=n};
+ return{run:s=>vm.runInContext(s,context),nodes,WS,PC,timers,time:n=>now=n,
+   fire:name=>(events.get(name)||[]).forEach(f=>f()),
+   async advance(ms){const end=now+ms;while(true){const next=[...timers].filter(([,t])=>t.due<=end).sort((a,b)=>a[1].due-b[1].due)[0];if(!next)break;const [key,t]=next;now=t.due;if(t.repeat)t.due+=t.ms;else timers.delete(key);t.f();await new Promise(resolve=>setImmediate(resolve));}now=end;}};
 }
 module.exports={env};
 if(require.main===module)(async()=>{
