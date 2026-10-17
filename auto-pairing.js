@@ -60,7 +60,7 @@ function pairingInput(){
   if(!editablePairing())return;
   const typed=el('session').value.trim();
   const raw=typed.toUpperCase();
-  if(typed.length>6||!/^[A-Za-z2-9]*$/.test(typed)||[...raw].some(c=>!Pairing.ALPHABET.includes(c))){showPairingError('Invalid pairing code');return;}
+  if(typed.length>6||!/^[A-Za-z2-9]*$/.test(typed)||[...raw].some(c=>!Pairing.ALPHABET.includes(c))){showPairingError('Invalid connection code');return;}
   el('session').value=raw;showPairingError('');
   const code=Pairing.normalize(raw);
   if(code)inputTimer=setTimeout(()=>{inputTimer=null;joinAutomatically(code);},PAIRING_INPUT_DEBOUNCE_MS);
@@ -107,7 +107,7 @@ el('scan').onclick=()=>{
 scanner.onPayload=payload=>{
   el('scanPanel').hidden=true;
   const code=Pairing.parseQr(payload);
-  if(code)joinAutomatically(code);else showPairingError('QR code is not a valid pairing code.');
+  if(code)joinAutomatically(code);else showPairingError('QR code is not a valid connection code.');
 };
 window.addEventListener('pagehide',()=>{
   lookupId++;lookupAbort?.abort();lookupAbort=null;
@@ -142,10 +142,10 @@ function selectStartPath(path){
 el('scan').onclick=()=>selectStartPath('connect');
 el('chooseShare').onclick=()=>selectStartPath('share');
 for(const id of ['cancelScan','closeShow'])el(id).onclick=()=>{closeWorkflow();el('scan').focus?.();};
-el('codeConnect').onclick=()=>{const code=Pairing.normalize(el('session').value);if(code)joinAutomatically(code);else el('codeError').textContent='Invalid pairing code';};
+el('codeConnect').onclick=()=>{const code=Pairing.normalize(el('session').value);if(code)joinAutomatically(code);else el('codeError').textContent='Invalid connection code';};
 scanner.onPayload=payload=>{
   scanner.stop();const code=Pairing.parseQr(payload);
-  if(code)joinAutomatically(code);else{el('scanError').textContent='QR code is not a valid pairing code.';el('scanPanel').hidden=false;}
+  if(code)joinAutomatically(code);else{el('scanError').textContent='QR code is not a valid connection code.';el('scanPanel').hidden=false;}
 };
 scanner.onError=message=>{scanner.stop();el('scanError').textContent=message;};
 function currentShareCode(){return active?.intent==='create'&&active.phase==='waiting'?Pairing.normalize(el('createdCode').textContent):null;}

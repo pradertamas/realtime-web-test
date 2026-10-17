@@ -65,15 +65,15 @@ async function signal(s,m) {
       s.registered=true;
       if(s.intent==='create')clearTimeout(s.waitingTimer);
       pairingState(s,'waiting');
-      status(s.intent==='create'?'Waiting for phone...':'Phone connected. Starting stream');
+      status(s.intent==='create'?'Waiting for another device...':'Phone connected. Starting stream');
       if(s.intent==='create'){el('createdPairing').hidden=false;el('createdCode').textContent=s.session;QrTools.render(el('createdQr'),Pairing.receiverUrl(s.session));}
     }else if(m.status==='conflict' && s.intent==='create' && s.attempts<4){
       s.attempts++;s.session=Pairing.generate();const previous=s.ws;s.ws=null;previous.close();openSignaling(s);
-    }else await stop(s,m.status==='not-found'?'Pairing code not found or expired.':m.status==='rate-limited'?'Too many attempts. Please wait and try again.':'Pairing code already in use.');
+    }else await stop(s,m.status==='not-found'?'Connection code not found or expired.':m.status==='rate-limited'?'Too many attempts. Please wait and try again.':'Connection code already in use.');
     return;
   }
   if(['peer-present','offer','ice'].includes(m.type)&&!s.registered)throw Error('Pairing registration has not succeeded.');
-  if(m.type==='peer-present'){clearTimeout(s.rotationTimer);pairingState(s,'connecting');receiverView('CONNECTING');status('Waiting for the phone to allow sharing...');return;}
+  if(m.type==='peer-present'){clearTimeout(s.rotationTimer);pairingState(s,'connecting');receiverView('CONNECTING');status('Waiting for another device...');return;}
   if(m.type==='peer-left'){await stop(s,'Disconnected');return;}
   if(m.type==='ready') {send(s,{type:'ready'});return;}
   if(m.type==='bye') {await stop(s,'Android stopped');return;}
@@ -138,8 +138,8 @@ function bindPeer(s) {
 async function connect(intent='join') {
   scanner.stop();el('scanPanel').hidden=true;
   let session;
-  try{session=intent==='create'?Pairing.generate():Pairing.normalize(el('session').value);}catch{status('Secure code generation is unavailable. Enter a pairing code instead.');return;}
-  if(!session){status('Invalid pairing code. Enter the 6-character code shown on your phone.');return;}
+  try{session=intent==='create'?Pairing.generate():Pairing.normalize(el('session').value);}catch{status('Secure code generation is unavailable. Enter a connection code instead.');return;}
+  if(!session){status('Invalid connection code. Enter the 6-character code shown on your phone.');return;}
   // A fresh attempt always retires the previous registration/peer, even if the
   // phone cancelled consent before ever registering (no peer-left can arrive).
   if(active) stop(active,'',false);
@@ -169,7 +169,7 @@ function openSignaling(s){
     clearInterval(s.readyTimer);clearTimeout(s.registrationTimer);
     const ws=new WebSocket(SIGNALING_URL+'?session='+encodeURIComponent(s.session)+'&role=receiver&intent='+s.intent);s.ws=ws;
     ws.onopen=()=>{if(active!==s||s.stopping||s.ws!==ws)return;status('Connecting');
-      s.registrationTimer=setTimeout(()=>stop(s,'Pairing service is unavailable. Please try again later.'),15000);send(s,{type:'ready'});
+      s.registrationTimer=setTimeout(()=>stop(s,'Connection service is unavailable. Please try again later.'),15000);send(s,{type:'ready'});
       s.readyTimer=setInterval(()=>{if(!s.offered)send(s,{type:'ready'});},1000);};
     ws.onmessage=e=>{
       if(active!==s||s.stopping||s.ws!==ws||typeof e.data!=='string')return;
@@ -273,7 +273,7 @@ function addressFamily(address){return typeof address!=='string'||!address?'N/A'
 
 const scanner=new QrTools.CameraScanner({video:el('scanVideo'),canvas:el('scanCanvas'),onPayload:payload=>{
   el('scanPanel').hidden=true;const code=Pairing.parseQr(payload);
-  if(!code){status('QR code is not a valid pairing code.');return;}
+  if(!code){status('QR code is not a valid connection code.');return;}
   el('session').value=code;connect('join');
 },onError:message=>{el('scanPanel').hidden=true;status(message);}});
 el('scan').onclick=()=>{if(active&&!['creating','waiting'].includes(active.phase))return;el('scanPanel').hidden=false;scanner.start();};

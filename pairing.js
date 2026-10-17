@@ -14,9 +14,9 @@
   function query(search) {
     const params = new URLSearchParams(search);
     if (!params.has('session')) return {code:null,error:null};
-    if (params.getAll('session').length !== 1) return {code:null,error:'The pairing link is invalid. Enter the code shown on your phone.'};
+    if (params.getAll('session').length !== 1) return {code:null,error:'The connection link is invalid. Enter the code shown on your phone.'};
     const code = normalize(params.get('session'));
-    return {code,error:code?null:'The pairing link is invalid. Enter the code shown on your phone.'};
+    return {code,error:code?null:'The connection link is invalid. Enter the code shown on your phone.'};
   }
   function generate(cryptoApi = globalThis.crypto) {
     if (!cryptoApi?.getRandomValues) throw Error('Secure random generation is unavailable.');
@@ -34,6 +34,6 @@
       return normalize(url.searchParams.get('session'));
     } catch {return null;}
   }
-  const receiverUrl = code => {if(normalize(code)!==code)throw Error('Invalid pairing code');return RECEIVER_URL+'?session='+code;};
+  const receiverUrl = code => {if(normalize(code)!==code)throw Error('Invalid connection code');return RECEIVER_URL+'?session='+code;};
   root.Pairing = { ALPHABET, normalize, query, generate, parseQr, receiverUrl };
 })(typeof module !== 'undefined' && module.exports ? module.exports : globalThis);

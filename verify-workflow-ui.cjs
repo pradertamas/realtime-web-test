@@ -13,7 +13,7 @@ const own=e.run('active'),socketCount=e.WS.instances.length;
 e.nodes.get('scan').onclick();
 assert.equal(e.nodes.get('scanPanel').hidden,false);assert.equal(starts,1);assert.equal(e.nodes.get('showPanel').hidden,true);
 assert.equal(e.nodes.get('status').parent,e.nodes.get('connectMessages'));assert.equal(e.nodes.get('pairingError').parent,e.nodes.get('connectMessages'));
-e.run("scanner.onError('Camera permission denied. Enter the pairing code instead.')");
+e.run("scanner.onError('Camera permission denied. Enter the connection code instead.')");
 assert.match(e.nodes.get('scanError').textContent,/permission denied/);assert.equal(e.nodes.get('scanPanel').hidden,false);
 e.nodes.get('session').value='bad';e.nodes.get('codeConnect').onclick();assert.match(e.nodes.get('codeError').textContent,/Invalid/);
 e.nodes.get('cancelScan').onclick();assert.equal(e.nodes.get('scanPanel').hidden,true);assert.ok(stops>=2);
@@ -39,3 +39,19 @@ for(const id of ['createdPairing','createdQr','createdCode','copyCode','shareCod
 assert.match(html,/id="diagnostics"><summary>Advanced diagnostics/);
 assert.match(css,/object-fit:contain/);assert.match(css,/100dvh/);assert.ok(!css.includes('.workflow-panel{position:fixed'));
 console.log('PASS integrated workflows: two paths, embedded scanner/code/Connect/status, direct QR/code, Change without session recreation, cleanup, permission errors, invalid QR, explicit and scanned JOIN, mobile gate and desktop regression.');
+
+// Terminology changes must leave the existing code-only Copy/Share payload intact.
+assert.match(html,/id="copyCode">Copy connection link<\/button>/);
+assert.match(html,/id="shareCode" hidden>Share connection link<\/button>/);
+assert.equal((html.match(/>Back<\/button>/g)||[]).length,2);
+assert.ok(html.includes('Connection code'));
+assert.ok(!/>[^<]*(?:pairing code|pairing link|Change)[^<]*</i.test(html));
+assert.ok(fs.readFileSync('webrtc-receiver.js','utf8').includes('Waiting for another device...'));
+(async()=>{
+ const copy=page(),copied=[],shared=[];
+ copy.run('(nav)=>{globalThis.navigator=nav;}')({clipboard:{writeText:async value=>copied.push(value)},share:async value=>shared.push(value)});
+ copy.run("active.phase='waiting';el('createdCode').textContent='7K4M2Q';");
+ await copy.nodes.get('copyCode').onclick();await copy.nodes.get('shareCode').onclick();
+ assert.deepEqual(copied,['7K4M2Q']);assert.equal(shared.length,1);assert.equal(shared[0].title,'Screen Share');assert.equal(shared[0].text,'7K4M2Q');
+ copy.fire('pagehide');console.log('PASS connection terminology and unchanged Copy/Share payloads.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

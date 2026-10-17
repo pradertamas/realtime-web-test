@@ -5,7 +5,7 @@
     const qr=qrcode(0,'M');qr.addData(payload);qr.make();
     const cell=6,border=4,count=qr.getModuleCount(),size=(count+border*2)*cell;
     const canvas=document.createElement('canvas');canvas.width=canvas.height=size;
-    canvas.setAttribute('aria-label','Pairing QR code');canvas.setAttribute('role','img');
+    canvas.setAttribute('aria-label','Connection QR code');canvas.setAttribute('role','img');
     const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);ctx.fillStyle='#000';
     for(let y=0;y<count;y++)for(let x=0;x<count;x++)if(qr.isDark(y,x))ctx.fillRect((x+border)*cell,(y+border)*cell,cell,cell);
     element.replaceChildren(canvas);
@@ -45,11 +45,11 @@
             }
             if(run!==this.generation)return;
             if(payload){this.stop();this.onPayload(payload);return;}
-          }catch{if(run===this.generation){this.stop();this.onError('Camera is not available. Enter the pairing code instead.');}return;}
+          }catch{if(run===this.generation){this.stop();this.onError('Camera is not available. Enter the connection code instead.');}return;}
           this.timer=setTimeout(loop,200);
         };
         await loop();
-      }catch(error){if(run===this.generation){this.stop();this.onError(error.name==='NotAllowedError'?'Camera permission denied. Enter the pairing code instead.':'Camera is not available. Enter the pairing code instead.');}}
+      }catch(error){if(run===this.generation){this.stop();this.onError(error.name==='NotAllowedError'?'Camera permission denied. Enter the connection code instead.':'Camera is not available. Enter the connection code instead.');}}
     }
   }
   root.QrTools={render,stopTracks,CameraScanner};
