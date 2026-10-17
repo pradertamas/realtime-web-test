@@ -7,6 +7,14 @@ const remoteEntry=RemoteLink.entry(window.location.search,window.location.hash);
 const remoteMode=remoteEntry.mode==='remote';
 const REMOTE_RESOLVE_URL='https://realtime-relay-k28l.onrender.com/remote/resolve';
 let lookupId=0,lookupAbort=null,lookupTimer=null;
+const mobilePresentation=MobileReceiver.create({search:window.location.search,hash:window.location.hash,
+  document,element:el('receiver'),node:el,changeView:receiverView,start:()=>startReceiverIntent(),invalid:remoteMode?message=>remoteScreen(message,false):null,
+  resume:()=>{if(remoteMode)resolveRemote();else connect('create');}});
+function startReceiverIntent(){
+  if(!pageActive)return;
+  el('remotePanel').hidden=true;el('connectingMessage').hidden=false;
+  if(remoteMode)resolveRemote();else if(pairingLink.code){el('session').value=pairingLink.code;connect('join');}else connect('create');
+}
 function remoteScreen(message,retry=true){
   receiverView('CONNECTING');
   el('remotePanel').hidden=false;el('connectingMessage').hidden=true;
@@ -14,7 +22,7 @@ function remoteScreen(message,retry=true){
   el('disconnect').hidden=!active;el('play').hidden=true;
 }
 async function resolveRemote(){
-  if(!remoteMode||!pageActive||lookupAbort||active)return;
+  if(!mobilePresentation.allowed()||!remoteMode||!pageActive||lookupAbort||active)return;
   if(remoteEntry.error){remoteScreen(remoteEntry.error,false);return;}
   const id=++lookupId,abort=new AbortController();lookupAbort=abort;
   const timeout=setTimeout(()=>abort.abort(),15000);
@@ -38,7 +46,7 @@ async function resolveRemote(){
   finally{clearTimeout(timeout);if(id===lookupId){lookupAbort=null;lookupTimer=null;}}
 }
 function clearPairingInput(){clearTimeout(inputTimer);inputTimer=null;}
-function editablePairing(){return !remoteMode&&(!active||['creating','waiting'].includes(active.phase)&&active.intent==='create');}
+function editablePairing(){return mobilePresentation.allowed()&&!remoteMode&&(!active||['creating','waiting'].includes(active.phase)&&active.intent==='create');}
 function showPairingError(text){el('pairingError').textContent=text;}
 function joinAutomatically(code){
   clearPairingInput();
@@ -75,6 +83,7 @@ onPairingEnded=reason=>{
   clearPairingInput();clearTimeout(recoveryTimer);
   el('session').value='';showPairingError(reason);
   if(remoteMode){remoteScreen('Screen sharing ended. Try again when the phone is waiting.');return;}
+  if(mobilePresentation.ended(reason||'Screen sharing ended.'))return;
   if(pageActive)recoveryTimer=setTimeout(()=>{recoveryTimer=null;if(pageActive&&!active)connect('create');},1000);
 };
 el('session').oninput=event=>{if(event?.isComposing){clearPairingInput();return;}pairingInput();};
@@ -88,6 +97,7 @@ el('session').onpaste=event=>{
 const startPairingScan=el('scan').onclick;
 el('scan').onclick=()=>{
   clearPairingInput();clearTimeout(recoveryTimer);recoveryTimer=null;
+  if(!mobilePresentation.allowed())return;
   if(!active)connect('create');
   startPairingScan();
 };
@@ -101,9 +111,9 @@ scanner.onPayload=payload=>{
 window.addEventListener('pagehide',()=>{
   lookupId++;lookupAbort?.abort();lookupAbort=null;
   clearTimeout(lookupTimer);lookupTimer=null;
-  pageActive=false;clearPairingInput();clearTimeout(recoveryTimer);recoveryTimer=null;
+  pageActive=false;mobilePresentation.hide();clearPairingInput();clearTimeout(recoveryTimer);recoveryTimer=null;
 });
-window.addEventListener('pageshow',()=>{if(!pageActive){pageActive=true;if(!active){if(remoteMode)resolveRemote();else connect('create');}}});
-el('remoteRetry').onclick=()=>resolveRemote();
-if(remoteMode)resolveRemote();else if(pairingLink.code)connect('join');else connect('create');
+window.addEventListener('pageshow',()=>{if(!pageActive){pageActive=true;if(!active)mobilePresentation.restore();}});
+el('remoteRetry').onclick=()=>mobilePresentation.retry(resolveRemote);
+mobilePresentation.startup();
 // URL routes are exclusive; only manual six-character input needs a debounce.

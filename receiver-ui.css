@@ -13,3 +13,19 @@
 .receiver[data-view="STREAMING"] .receiver-video{height:calc(100vh - 130px);height:calc(100dvh - 130px);padding:0;margin:0}
 .receiver[data-view="STREAMING"] #video{height:100%;width:100%;max-height:100%;min-height:0;object-fit:contain}
 .receiver[data-view="STREAMING"] #diagnostics>summary{padding:10px;min-height:36px}
+/* Explicit mobile mode only; fullscreen presentation is independent from the connection. */
+.receiver[data-mobile="true"]{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;max-width:none;margin:0;background:#0b111b;overflow:auto;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));}
+.receiver[data-mobile="true"] .receiver-header{display:none}
+.mobile-message{max-width:540px;margin:10vh auto;text-align:center}.mobile-message button{margin:8px}
+.fullscreen-tools{display:none}
+.receiver[data-mobile="true"] .fullscreen-tools{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.receiver[data-mobile="true"][data-view="STREAMING"]{overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:#000}
+.receiver[data-mobile="true"][data-view="STREAMING"] .receiver-video{height:100%;width:100%;margin:0;padding:0}
+.receiver[data-mobile="true"][data-view="STREAMING"] #video{height:100%;width:100%;max-height:none;max-width:none;min-height:0;object-fit:contain;border-radius:0}
+.receiver[data-mobile="true"][data-view="STREAMING"] .pairing-actions{position:absolute;bottom:max(8px,env(safe-area-inset-bottom));right:max(8px,env(safe-area-inset-right));z-index:2}
+.receiver[data-mobile="true"][data-view="STREAMING"] .fullscreen-tools{position:absolute;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));max-width:80%;z-index:2}
+.receiver[data-mobile="true"] #fullscreenNotice:empty{display:none}
+.receiver[data-mobile="true"][data-view="STREAMING"] #fullscreenNotice{background:#131f30;padding:6px;font-size:.8rem}
+.receiver[data-mobile="true"][data-view="STREAMING"] #diagnostics{position:absolute;bottom:max(8px,env(safe-area-inset-bottom));left:max(8px,env(safe-area-inset-left));z-index:2;max-width:85%;max-height:70%;overflow:auto;background:#131f30e8}
+.receiver[data-view="MOBILE_CONFIRM"]>.receiver-header,.receiver[data-view="MOBILE_CONFIRM"]>.pairing-actions,.receiver[data-view="MOBILE_CONFIRM"]>#diagnostics,.receiver[data-view="MOBILE_ENDED"]>.receiver-header,.receiver[data-view="MOBILE_ENDED"]>.pairing-actions{display:none}
+.receiver:fullscreen{max-width:none;background:#0b111b}

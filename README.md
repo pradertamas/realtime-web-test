@@ -129,3 +129,12 @@ JOIN and fresh phone approval. Unavailable/ended pages offer Try again without
 polling or token expiry. Explicit ?session links now directly JOIN without an
 unnecessary own CREATE. See [REMOTE_LINK.md](REMOTE_LINK.md). The relay endpoint
 and updated static assets need manual release; no deployment was performed.
+
+## Explicit mobile fullscreen receiver
+
+Use `webrtc-receiver.html?mode=mobile`, optionally `&session=<CODE>`, or
+`webrtc-receiver.html?mode=mobile#device=<TOKEN>`. Mobile mode asks for confirmation
+before any pairing/resolve, requests fullscreen directly from the acceptance click,
+and falls back to full viewport when unavailable. Default desktop links keep their
+automatic behavior. See [MOBILE_RECEIVER.md](MOBILE_RECEIVER.md) for API, lifecycle,
+privacy and the physical test matrix. Run `node verify-mobile-receiver.cjs` too.
