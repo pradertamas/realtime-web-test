@@ -160,3 +160,14 @@ document.addEventListener('keydown',event=>{
 });
 window.addEventListener('pagehide',closeWorkflow);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)closeWorkflow();});
+
+// Local presentation selection only; choosing a path does not create/join anything.
+function selectStartPath(path){
+  for(const [name,button,panel] of [['connect','chooseConnect','connectActions'],['share','chooseShare','shareActions']]){
+    const selected=path===name;
+    el(button).setAttribute('aria-pressed',String(selected));el(panel).hidden=!selected;
+  }
+}
+el('chooseConnect').onclick=()=>selectStartPath('connect');
+el('chooseShare').onclick=()=>selectStartPath('share');
+selectStartPath(null);

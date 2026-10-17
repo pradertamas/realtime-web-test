@@ -33,3 +33,23 @@
 /* Connection workflows remain inside the fullscreen receiver root. */
 .receiver-header{padding:10px 0}.receiver-header h1{margin:8px}.role-switch,.workflow-actions{display:flex;justify-content:center;gap:10px}.role-switch button{flex:1;max-width:230px}.role-switch small{display:block;font-size:.7rem}.role-switch [aria-pressed="true"]{border-color:#7df2b0;background:#23624b}.pairing-panel h2{font-size:1.1rem;margin:16px 0 10px}.pairing-panel{padding:12px}.receiver[data-mobile="true"]:not([data-view="STREAMING"]) .receiver-header{display:block}.receiver[data-view="MOBILE_CONFIRM"] .receiver-header,.receiver[data-view="MOBILE_ENDED"] .receiver-header{display:none!important}
 .workflow-panel{position:fixed;top:0;right:0;bottom:0;left:0;z-index:20;box-sizing:border-box;height:100vh;height:100dvh;overflow:auto;background:#0b111b;color:#eef5ff;padding:16px;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));text-align:center}.workflow-panel>button:first-child{display:block}.workflow-panel #session{max-width:420px;margin:20px auto}.workflow-panel #createdQr canvas{max-height:50vh;width:auto;max-width:100%}.camera-stage{position:relative;width:100%;max-width:700px;height:48vh;margin:auto;background:#000}.camera-stage #scanVideo{width:100%;height:100%;max-height:none;object-fit:contain}.qr-target{position:absolute;top:50%;left:50%;width:160px;height:160px;max-width:60%;max-height:80%;border:3px solid #7df2b0;transform:translate(-50%,-50%);pointer-events:none}.workflow-panel h2{margin:12px}.workflow-panel p{margin:12px}body.workflow-open{overflow:hidden}
+
+/* Numbered home workflow: shared geometry, restrained emphasis. */
+.receiver-header,.pairing-panel,#diagnostics{width:100%;max-width:880px;margin-left:auto;margin-right:auto}
+.receiver-header{text-align:left;padding:8px 0 16px}.receiver-header h1{margin:0;font-size:1.75rem}
+.pairing-panel{background:transparent;border:0;padding:0;text-align:left}
+.workflow-step{padding:18px;margin:0 0 14px;border:1px solid #293a50;border-radius:10px;background:#101b2a}
+.pairing-panel .workflow-step h2{margin:0 0 14px;font-size:1rem;font-weight:650;color:#c2d1e4}
+.role-switch,.start-options,.workflow-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}
+.workflow-step button{width:100%;min-width:0;margin:0;padding:14px 16px;border-radius:8px;font-size:1rem;line-height:1.4;min-height:50px;transition:background-color .12s,border-color .12s}
+.role-switch button{max-width:none;min-height:80px;font-weight:650}.role-switch small{display:block;margin-top:5px;font-size:.75rem;font-weight:400;color:#b9cbe0}
+.role-switch button:disabled{opacity:.45}.role-switch [aria-pressed="true"]{background:#203f43;border-color:#77b6aa}
+.workflow-step .action-card{text-align:left;min-height:128px;background:#17283b;border-color:#415671;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.action-card strong{font-size:1rem;font-weight:650}.action-card span{font-size:.875rem;line-height:1.45;color:#b9cbe0;font-weight:400}
+.workflow-step button:not(:disabled):hover{background:#29445d;border-color:#9bb7d5}.workflow-step button:focus{outline:2px solid #a8d5ff;outline-offset:3px}
+.workflow-step .action-card[aria-pressed="true"]{background:#203b4c;border-color:#89b7cc}
+.workflow-actions #scan{margin:0}.workflow-actions button{height:100%}
+.status-panel{background:#0e1724;border-color:#26354a}.receiver .status-panel .status{display:block;min-height:0;padding:0;margin:0;background:transparent;border-radius:0;font-size:.95rem;font-weight:500;color:#cbd9eb}.status-panel #pairingError:empty{display:none}.status-panel #pairingError{color:#ffb7b7;margin:10px 0 0}
+#diagnostics>summary{font-size:.9rem;color:#a7b9ce;font-weight:500;padding:12px 0}
+@media(max-width:600px){.start-options{grid-template-columns:minmax(0,1fr)}.workflow-step{padding:14px;margin-bottom:12px}.workflow-step .action-card{min-height:100px}.receiver-header{padding-bottom:12px}}
+@media(max-width:360px){.workflow-actions{grid-template-columns:minmax(0,1fr)}}
