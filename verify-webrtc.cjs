@@ -50,6 +50,10 @@ if(require.main===module)(async()=>{
  assert.equal(exhausted.WS.instances.length,4);assert.equal(exhausted.run('active'),null);assert.equal(exhausted.nodes.get('status').textContent,'Connection code already in use.');
  const failed=env();await failed.run('connect()');const fp=failed.PC.instances[0];fp.connectionState='failed';const failing=failed.run('active');fp.onconnectionstatechange();await new Promise(resolve=>setImmediate(resolve));assert.equal(failed.run('active'),null);assert.equal(failed.nodes.get('status').textContent,'Direct connection could not be established.');
  assert.equal(pc.config.iceServers.length,1);assert.match(pc.config.iceServers[0].urls,/^stun:/);assert.equal(e.run('typeof NetworkTest'),'undefined');
- for(const file of fs.readdirSync('.').filter(f=>f.endsWith('.html'))){for(const [,ref] of fs.readFileSync(file,'utf8').matchAll(/(?:src|href)="([^"#]+)"/g)){if(!/^(https?:|data:)/.test(ref))assert.ok(fs.existsSync(ref.split(/[?#]/)[0]),file+': '+ref);}}
+ for(const file of fs.readdirSync('.').filter(f=>f.endsWith('.html'))){for(const [,ref] of fs.readFileSync(file,'utf8').matchAll(/(?:src|href)="([^"#]+)"/g)){if(!/^(https?:|data:)/.test(ref)){
+  // The dedicated NAS entry exports these same-origin root assets; legacy references stay strict.
+  const target=file==='connection-request.html'&&/^\/connect-assets\/connection-request(?:-media|-entry)?\.(js|css)$/.test(ref)?ref.slice('/connect-assets/'.length):ref.split(/[?#]/)[0];
+  assert.ok(fs.existsSync(target),file+': '+ref);
+ }}}
  console.log('PASS direct STUN-only signaling/early ICE, duplicate offer, missing stats, bitrate, selected pair, frame timing, summary/cleanup/reconnect, code normalization, QR query prefill without auto-connect, invalid code, TURN-config rejection, direct failure and static links.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

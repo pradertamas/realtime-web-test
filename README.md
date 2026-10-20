@@ -1,5 +1,10 @@
 ﻿# Screen Receiver - P2P pairing release
 
+The separate request-first `/connect` browser recipient is documented in
+[CONNECTION_REQUEST_BROWSER.md](CONNECTION_REQUEST_BROWSER.md). It is locally
+implemented for pairing-origin hosting and has not been deployed. The existing
+six-character and persistent remote-link pages below remain separate protocols.
+
 The normal receiver is webrtc-receiver.html. Both phone and browser automatically
 create a private waiting pairing and display their own QR/code when opened.
 There are no Create/Connect/Continue buttons. Scan the other device or enter its
