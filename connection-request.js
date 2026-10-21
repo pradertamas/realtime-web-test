@@ -18,7 +18,7 @@
  function claim(crypto){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
  class SafeError extends Error{constructor(kind,wait=0){super(kind);this.kind=kind;this.wait=wait;}}
  class Http {
-  constructor(fetcher=globalThis.fetch,base=API){this.fetcher=fetcher;this.base=base;}
+  constructor(fetcher=globalThis.fetch.bind(globalThis),base=API){this.fetcher=fetcher;this.base=base;}
   async call(id,operation,secret,body,signal){
    const controller=new AbortController(),abort=()=>controller.abort();
    signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();

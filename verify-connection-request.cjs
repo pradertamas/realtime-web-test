@@ -24,6 +24,16 @@ function fixture({role='send',storage=null}={}){
  f.random=()=>random;return f;
 }
 async function clientTests(){
+ const originalFetch=globalThis.fetch;let defaultFetchCalls=0;
+ try{
+  globalThis.fetch=function(url,options){
+   if(this!==globalThis)throw new TypeError('Illegal invocation');
+   defaultFetchCalls++;assert.equal(url,R.API+'/connection-requests/'+id+'/status');assert.equal(options.method,'GET');
+   return Promise.resolve(new Response(JSON.stringify({state:'WAITING'}),{headers:{'Content-Type':'application/json'}}));
+  };
+  const status=await new R.Http().call(id,'status',cap);
+  assert.equal(status.state,'WAITING');assert.equal(defaultFetchCalls,1);
+ }finally{globalThis.fetch=originalFetch;}
  assert.ok(R.parse(hash()));assert.equal(R.parse(hash('receive')).role,'receive');
  assert.ok(R.parse(`#i=send&c=${cap}&r=${id}&v=1`));
  for(const bad of [hash()+'&v=1',hash()+'&x=1',hash().replace('v=1','v=2'),hash().replace(id,id.slice(1)),hash().replace(id,'B'.repeat(22)),hash()+'%',hash().replace('v=1','v=%31'),'#'+ 'a'.repeat(256)])assert.equal(R.parse(bad),null);
