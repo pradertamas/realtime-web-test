@@ -23,6 +23,29 @@ function fixture({role='send',storage=null}={}){
   }}});
  f.random=()=>random;return f;
 }
+async function timerReceiverTests(){
+ const originalLater=globalThis.setTimeout,originalCancel=globalThis.clearTimeout;
+ try{
+  for(const mode of ['schedule','cleanup']){
+   const tasks=[],cancelled=[],f=fixture();
+   globalThis.setTimeout=function(fn,ms){if(this!==globalThis)throw new TypeError('Illegal invocation');const task={fn,ms};tasks.push(task);return task;};
+   globalThis.clearTimeout=function(task){if(this!==globalThis)throw new TypeError('Illegal invocation');cancelled.push(task);};
+   const client=new R.Client({http:f.client.http,storage:{getItem:k=>f.records.get(k)||null,setItem:(k,v)=>f.records.set(k,v)},crypto:{getRandomValues:b=>{b.fill(3);return b;}},clock:()=>0,view:v=>f.views.push(v)});
+   try{
+    await client.open(hash());
+    if(mode==='schedule'){
+     await client.accept();assert.equal(f.views.at(-1).state,'WAITING');
+     assert.deepEqual(tasks.map(t=>t.ms),[120000,2000]);
+    }
+    client.stop();assert.equal(f.views.at(-1).state,'ENDED');
+    assert.equal(cancelled.length,2);
+    if(mode==='schedule')assert.deepEqual(cancelled,[tasks[1],tasks[0]]);
+    else assert.deepEqual(cancelled,[null,null]);
+   }finally{client.stop();}
+  }
+ }finally{globalThis.setTimeout=originalLater;globalThis.clearTimeout=originalCancel;}
+ console.log('PASS default Client timer receivers through Accept scheduling and Stop cleanup');
+}
 async function clientTests(){
  const originalFetch=globalThis.fetch;let defaultFetchCalls=0;
  try{
@@ -123,7 +146,7 @@ async function mediaTests(){
  current=true;const timed=M.create(options,deps),w=sockets.at(-1),before=ends;
  w.message({type:'registration',status:'ok',role:'receiver',intent:'join'});w.message({type:'peer-present'});w.message({type:'offer',sdp:'synthetic'});await settle();const direct=tasks.findLast(t=>t.ms===45000);direct.fn();assert.equal(ends,before+1);timed.stop();
 }
-(async()=>{await clientTests();await httpTests();await mediaTests();await cleanupAuthorityTests();
+(async()=>{await timerReceiverTests();await clientTests();await httpTests();await mediaTests();await cleanupAuthorityTests();
  for(const file of ['connection-request.js','connection-request-media.js','connection-request-entry.js']){const text=fs.readFileSync(file,'utf8');assert.ok(!/console\.|localStorage|indexedDB|Pairing\.|RemoteLink\./.test(text),file);}
  console.log('PASS request-first parser, explicit claim/Accept/reload, readiness/assignment, bounded HTTP, exact attempt isolation, protected answer/ICE/media and secret hygiene.');
 })().catch(error=>{console.error('FAIL request-first verifier '+error.name+' '+error.stack?.split('\n').find(line=>line.includes('at clientTests')||line.includes('at httpTests')||line.includes('at mediaTests')));process.exitCode=1;});

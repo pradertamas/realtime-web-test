@@ -45,7 +45,7 @@
  }
  function assignment(value){return value&&Object.keys(value).length===3&&value.role==='receiver'&&value.intent==='join'&&/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/.test(value.code);}
  class Client {
-  constructor({http=new Http(),storage,crypto=globalThis.crypto,media,view=()=>{},later=setTimeout,cancel=clearTimeout,clock=()=>performance.now()}){Object.assign(this,{http,storage,crypto,media,view,later,cancel,clock});this.current=null;}
+  constructor({http=new Http(),storage,crypto=globalThis.crypto,media,view=()=>{},later=globalThis.setTimeout.bind(globalThis),cancel=globalThis.clearTimeout.bind(globalThis),clock=()=>performance.now()}){Object.assign(this,{http,storage,crypto,media,view,later,cancel,clock});this.current=null;}
   owns(a){return this.current===a&&!a.closed;}
   show(a,state,message,retry=false){if(this.owns(a)){a.ui=state;this.view({state,message,retry,accept:state==='PREVIEW',stop:!!a.winner||!!a.media});}}
   key(a){return 'screen-share-request-v1:'+a.link.id;}
